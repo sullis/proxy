@@ -20,3 +20,11 @@ API Proxy server that is hosted at https://api.flow.io
   
   - Implement backwards compatibility layer by upgrading responses
     from the latest version of the API to the user's requested version
+
+## Internal URLs
+
+View current configuration, including all services and routes:
+
+```
+http://localhost:9000/_internal_/config
+```

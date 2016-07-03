@@ -1,5 +1,7 @@
 package lib
 
+import javax.inject.{Inject, Singleton}
+import play.api.{Configuration, Logger}
 import scala.io.Source
 
 case class Service(
@@ -13,18 +15,40 @@ case class Route(
   path: String
 )
 
-object Services {
+@Singleton
+class ServicesConfig @Inject() (
+  configuration: Configuration
+) {
+
+  private[this] val Uri = configuration.getString("proxy.config.uri").getOrElse {
+    sys.error("Missing configuration parameter[proxy.config.uri]")
+  }
 
   /**
     * Loads service definitions from the specified URI
     */
-  def load(uri: String): Either[Seq[String], Services] = {
+  private[this] def load(uri: String): Either[Seq[String], Seq[Service]] = {
     val contents = Source.fromURL(uri).mkString
-    ServiceParser.parse(contents) match {
-      case Left(errors) => Left(errors)
-      case Right(services) => Right(Services(services))
+    ServiceParser.parse(contents)
+  }
+
+  private[this] def refresh(): Option[Services] = {
+    load(Uri) match {
+      case Left(errors) => {
+        Logger.error(s"Failed to load proxy configuration from Uri[$Uri]: $errors")
+        None
+      }
+      case Right(all) => {
+        Option(Services(all))
+      }
     }
   }
+
+  private[this] var lastLoad: Services = refresh().getOrElse {
+    Services(Nil)
+  }
+
+  def current(): Services = lastLoad
 
 }
 

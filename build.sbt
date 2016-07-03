@@ -9,7 +9,6 @@ lazy val root = project
   .enablePlugins(PlayScala)
   .settings(commonSettings: _*)
   .settings(
-    routesGenerator := InjectedRoutesGenerator,
     libraryDependencies ++= Seq(
       ws,
       "org.scalatestplus" %% "play" % "1.4.0" % "test"

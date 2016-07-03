@@ -1,6 +1,0 @@
-code:
-  flow:
-    common:
-      version: latest
-      generators:
-        play_2_x_routes: conf/common.routes

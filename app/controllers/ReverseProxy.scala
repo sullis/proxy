@@ -7,7 +7,7 @@ import play.api.mvc._
 import scala.concurrent.Future
 
 @Singleton
-class Application @Inject() (
+class ReverseProxy @Inject() (
   wsClient: WSClient
 ) extends Controller {
 
@@ -15,6 +15,8 @@ class Application @Inject() (
   private[this] implicit val ec = scala.concurrent.ExecutionContext.Implicits.global
 
   def reverseProxy = Action.async(parse.raw) { request: Request[RawBuffer] =>
+    println(s"reverseProxy for path[${request.path}]")
+
     // Create the request to the upstream server:
     val proxyRequest = wsClient.url("http://localhost:6151" + request.path)
       .withFollowRedirects(false)
@@ -43,39 +45,3 @@ class Application @Inject() (
 
 
 }
-/*
-package controllers
-
-import javax.inject.{Inject, Singleton}
-import play.api._
-import play.api.libs.ws.WS
-import play.api.mvc._
-//import play.api.Play.current
-
-@Singleton
-class Application @Inject() (
-  application: Application
-) {
-
-
-  def reverseProxy = Action.async(parse) {
-    request: Request[RawBuffer] =>
-    // Create the request to the upstream server:
-    val proxyRequest = WS.url("http://localhost:8887" + request.path)
-      .withFollowRedirects(false)
-      .withMethod(request.method)
-      .withVirtualHost("localhost:9000")
-      //.withHeaders(flattenMultiMap(request.headers.toMap): _*)
-      .withQueryString(request.queryString.mapValues(_.head).toSeq: _*)
-      .withBody(request.body.asBytes().get)
-
-    // Stream the response to the client:
-    proxyRequest.stream.map {
-      case response => Result(
-        ResponseHeader(headers.status, headers.headers.mapValues(_.head)),
-        enum)
-    }
-  }
-
-}
- */

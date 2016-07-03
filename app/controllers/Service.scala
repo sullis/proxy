@@ -1,9 +1,52 @@
 package controllers
 
-case class Service(name: String, host: String)
+import scala.io.Source
+
+case class Service(
+  name: String,
+  host: String,
+  routes: Seq[Route]
+)
+
+case class Route(
+  method: String,
+  path: String
+)
 
 object Services {
 
-  val Token = Service("token", "http://localhost:6151")
+  /**
+    * Loads service definitions from the specified URI
+    */
+  def load(uri: String): Either[Seq[String], Services] = {
+    val contents = Source.fromURL("http://google.com").mkString
+    println(s"contents: $contents")
+    ServiceParser.parse(contents) match {
+      case Left(errors) => Left(errors)
+      case Right(services) => Right(Services(services))
+    }
+  }
+
+}
+
+case class Services(all: Seq[Service]) {
+
+  /**
+    * This is a map from path to service allowing us to quickly identify
+    * to which service we route an incoming request to.
+    */
+  private[this] val byPath: Map[String, Service] = {
+    Map(
+      all.flatMap { s =>
+        s.routes.map { r =>
+          (r.path.toLowerCase -> s)
+        }
+      }: _*
+    )
+  }
+
+  def findByPath(path: String): Option[Service] = {
+    byPath.get(path.toLowerCase)
+  }
 
 }

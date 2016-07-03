@@ -6,9 +6,9 @@ import play.api.libs.ws.{WSClient, StreamedResponse}
 import play.api.mvc._
 import scala.concurrent.Future
 
-@Singleton
-class ReverseProxy @Inject() (
-  wsClient: WSClient
+case class ReverseProxy(
+  wsClient: WSClient,
+  services: Services
 ) extends Controller {
 
   private[this] val VirtualHostName = "api.flow.io"
@@ -21,9 +21,9 @@ class ReverseProxy @Inject() (
   private[this] implicit val ec = scala.concurrent.ExecutionContext.Implicits.global
 
   def reverseProxy = Action.async(parse.raw) { request: Request[RawBuffer] =>
-    request.path match {
-      case "/token-validations" => proxy(request, Services.Token)
-      case other => Future {
+    services.findByPath(request.path) match {
+      case Some(service) => proxy(request, service)
+      case None => Future {
         println(s"reverseProxy Unrecognized path[${request.path}] - returning 404")
         NotFound
       }

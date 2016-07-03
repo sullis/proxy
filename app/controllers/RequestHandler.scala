@@ -8,9 +8,20 @@ import scala.concurrent.Future
 
 class RequestHandler @Inject() (
   wsClient: WSClient,
-  proxy: ReverseProxy,
   healthchecks: Healthchecks
 ) extends HttpRequestHandler with Handler {
+
+  private[this] val services = Services(
+    Seq(
+      Service(
+        name = "token",
+        host = "http://localhost:6151",
+        routes = Seq(Route("POST", "/token-validations"))
+      )
+    )
+  )
+
+  private[this] val proxy = ReverseProxy(wsClient, services)
 
   def handlerForRequest(request: RequestHeader) = {
     (request.path) match {

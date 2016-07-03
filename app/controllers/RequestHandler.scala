@@ -8,16 +8,14 @@ import scala.concurrent.Future
 
 class RequestHandler @Inject() (
   wsClient: WSClient,
-  proxy: ReverseProxy
+  proxy: ReverseProxy,
+  healthchecks: Healthchecks
 ) extends HttpRequestHandler with Handler {
 
   def handlerForRequest(request: RequestHeader) = {
     (request.path) match {
-      case ("/_internal_/healthcheck") => (request, proxy.reverseProxy)
-      case _ => {
-        println(s"No route for ${request.path}")
-        (request, Action(Results.NotFound))
-      }
+      case ("/_internal_/healthcheck") => (request, healthchecks.getHealthcheck)
+      case _ => (request, proxy.reverseProxy)
     }
   }
 

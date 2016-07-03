@@ -13,12 +13,23 @@ class ReverseProxy @Inject() (
 
   private[this] val VirtualHostName = "api.flow.io"
   private[this] implicit val ec = scala.concurrent.ExecutionContext.Implicits.global
+  private[this] val DefaultContentType = "application/octet-stream"
 
   def reverseProxy = Action.async(parse.raw) { request: Request[RawBuffer] =>
-    println(s"reverseProxy for path[${request.path}]")
+    request.path match {
+      case "/token-validations" => proxy(request, "token", "http://localhost:6151")
+      case other => Future {
+        println(s"reverseProxy Unrecognized path[${request.path}] - returning 404")
+        NotFound
+      }
+    }
+  }
+
+  def proxy(request: Request[RawBuffer], appName: String, host: String) = {
+    println(s"reverseProxy $appName ${request.method} $host${request.path}")
 
     // Create the request to the upstream server:
-    val proxyRequest = wsClient.url("http://localhost:6151" + request.path)
+    val proxyRequest = wsClient.url(host + request.path)
       .withFollowRedirects(false)
       .withMethod(request.method)
       .withVirtualHost(VirtualHostName)
@@ -29,15 +40,14 @@ class ReverseProxy @Inject() (
     proxyRequest.stream.map {
       case StreamedResponse(response, body) => {
         // Get the content type
-        val contentType = response.headers.get("Content-Type").flatMap(_.headOption)
-          .getOrElse("application/octet-stream")
+        val contentType: Option[String] = response.headers.get("Content-Type").flatMap(_.headOption)
 
         // If there's a content length, send that, otherwise return the body chunked
         response.headers.get("Content-Length") match {
           case Some(Seq(length)) =>
-            Ok.sendEntity(HttpEntity.Streamed(body, Some(length.toLong), Some(contentType)))
+            Ok.sendEntity(HttpEntity.Streamed(body, Some(length.toLong), contentType))
           case _ =>
-            Ok.chunked(body).as(contentType)
+            Ok.chunked(body).as(contentType.getOrElse(DefaultContentType))
         }
       }
     }

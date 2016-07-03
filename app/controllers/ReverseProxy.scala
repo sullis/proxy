@@ -38,7 +38,7 @@ case class ReverseProxy(
       .withFollowRedirects(false)
       .withMethod(request.method)
       .withVirtualHost(VirtualHostName)
-      .withHeaders(proxyHeaders(request.headers).headers: _*)
+      .withHeaders(proxyHeaders(request.headers, service).headers: _*)
       .withQueryString(request.queryString.mapValues(_.head).toSeq: _*)
       .withBody(request.body.asBytes().get)
 
@@ -64,10 +64,12 @@ case class ReverseProxy(
     }
   }
 
-  def proxyHeaders(headers: Headers): Headers = {
-    headers.get("Content-Type") match {
-      case None => headers.add("Content-Type" -> DefaultContentType)
-      case Some(_) => headers
-    }
+  def proxyHeaders(headers: Headers, service: Service): Headers = {
+    (
+      headers.get("Content-Type") match {
+        case None => headers.add("Content-Type" -> DefaultContentType)
+        case Some(_) => headers
+      }
+    ).add("X-Flow-Proxy-Service" -> service.name)
   }
 }

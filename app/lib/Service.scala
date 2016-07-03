@@ -58,27 +58,16 @@ case class Services(all: Seq[Service]) {
     * This is a map from path to service allowing us to quickly identify
     * to which service we route an incoming request to.
     */
-  private[this] val byPath: Map[String, Service] = {
-    Map(
-      all.flatMap { s =>
-        s.routes.map { r =>
-          (r.path.toLowerCase -> s)
-        }
-      }: _*
-    )
+  private[this] val routes: Seq[InternalRoute] = {
+    all.flatMap { s =>
+      s.routes.map { r =>
+        InternalRoute(r, s)
+      }
+    }
   }
 
   def findByPath(path: String): Option[Service] = {
-    byPath.get(path.toLowerCase) match {
-      case Some(s) => Some(s)
-      case None => {
-        println(s"Could not find path[$path]. Tried:")
-        byPath.keys.toSeq.sorted.foreach { p =>
-          println(s" - [$p]")
-        }
-        None
-      }
-    }
+    routes.find(_.matches(path.toLowerCase.trim)).map { _.service }
   }
 
 }

@@ -1,25 +1,32 @@
 package controllers
 
 import javax.inject.{Inject, Singleton}
+import play.api.Configuration
 import play.api.http.{HttpEntity, HttpRequestHandler}
 import play.api.libs.ws.{WSClient, StreamedResponse}
 import play.api.mvc._
 import scala.concurrent.Future
 
 class RequestHandler @Inject() (
+  configuration: Configuration,
   wsClient: WSClient,
   healthchecks: Healthchecks
 ) extends HttpRequestHandler with Handler {
 
-  private[this] val services = Services(
-    Seq(
-      Service(
-        name = "token",
-        host = "http://localhost:6151",
-        routes = Seq(Route("POST", "/token-validations"))
-      )
-    )
-  )
+  private[this] val Uri = configuration.getString("proxy.config.uri").getOrElse {
+    sys.error("Missing configuration parameter[proxy.config.uri]")
+  }
+
+  private[this] val services = Services.load(Uri) match {
+    case Left(errors) => {
+      sys.error(s"Failed to load configuration from URI[$Uri]: $errors")
+    }
+
+    case Right(services) => {
+      services
+    }
+  }
+
 
   private[this] val proxy = ReverseProxy(wsClient, services)
 

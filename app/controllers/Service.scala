@@ -19,8 +19,7 @@ object Services {
     * Loads service definitions from the specified URI
     */
   def load(uri: String): Either[Seq[String], Services] = {
-    val contents = Source.fromURL("http://google.com").mkString
-    println(s"contents: $contents")
+    val contents = Source.fromURL(uri).mkString
     ServiceParser.parse(contents) match {
       case Left(errors) => Left(errors)
       case Right(services) => Right(Services(services))

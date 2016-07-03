@@ -12,12 +12,17 @@ class ReverseProxy @Inject() (
 ) extends Controller {
 
   private[this] val VirtualHostName = "api.flow.io"
+
+  // WS Client defaults to application/octet-stream. Given this proxy
+  // is for APIs only, assume JSON if no content type header is
+  // provided.
+  private[this] val DefaultContentType = "application/json"
+
   private[this] implicit val ec = scala.concurrent.ExecutionContext.Implicits.global
-  private[this] val DefaultContentType = "application/octet-stream"
 
   def reverseProxy = Action.async(parse.raw) { request: Request[RawBuffer] =>
     request.path match {
-      case "/token-validations" => proxy(request, "token", "http://localhost:6151")
+      case "/token-validations" => proxy(request, Services.Token)
       case other => Future {
         println(s"reverseProxy Unrecognized path[${request.path}] - returning 404")
         NotFound
@@ -25,15 +30,15 @@ class ReverseProxy @Inject() (
     }
   }
 
-  def proxy(request: Request[RawBuffer], appName: String, host: String) = {
-    println(s"reverseProxy $appName ${request.method} $host${request.path}")
+  def proxy(request: Request[RawBuffer], service: Service) = {
+    println(s"reverseProxy ${service.name} ${request.method} ${service.host}${request.path}")
 
     // Create the request to the upstream server:
-    val proxyRequest = wsClient.url(host + request.path)
+    val proxyRequest = wsClient.url(service.host + request.path)
       .withFollowRedirects(false)
       .withMethod(request.method)
       .withVirtualHost(VirtualHostName)
-      //.withHeaders(flattenMultiMap(request.headers.toMap): _*)
+      .withHeaders(proxyHeaders(request.headers).headers: _*)
       .withQueryString(request.queryString.mapValues(_.head).toSeq: _*)
       .withBody(request.body.asBytes().get)
 
@@ -44,14 +49,25 @@ class ReverseProxy @Inject() (
 
         // If there's a content length, send that, otherwise return the body chunked
         response.headers.get("Content-Length") match {
-          case Some(Seq(length)) =>
+          case Some(Seq(length)) => {
             Ok.sendEntity(HttpEntity.Streamed(body, Some(length.toLong), contentType))
-          case _ =>
-            Ok.chunked(body).as(contentType.getOrElse(DefaultContentType))
+          }
+
+          case _ => {
+            contentType match {
+              case None => Ok.chunked(body)
+              case Some(ct) => Ok.chunked(body).as(ct)
+            }
+          }
         }
       }
     }
   }
 
-
+  def proxyHeaders(headers: Headers): Headers = {
+    headers.get("Content-Type") match {
+      case None => headers.add("Content-Type" -> DefaultContentType)
+      case Some(_) => headers
+    }
+  }
 }

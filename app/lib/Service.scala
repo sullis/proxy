@@ -36,7 +36,7 @@ class ServicesConfig @Inject() (
   /**
     * Loads service definitions from the specified URI
     */
-  private[this] def load(uri: String): Either[Seq[String], Seq[Service]] = {
+  def load(uri: String): Either[Seq[String], Seq[Service]] = {
     val contents = Source.fromURL(uri).mkString
     ServiceParser.parse(contents)
   }

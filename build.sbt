@@ -10,6 +10,7 @@ lazy val root = project
   .settings(commonSettings: _*)
   .settings(
     libraryDependencies ++= Seq(
+      filters,
       ws,
       "org.yaml" % "snakeyaml" % "1.17",
       "org.scalatestplus" %% "play" % "1.4.0" % "test"

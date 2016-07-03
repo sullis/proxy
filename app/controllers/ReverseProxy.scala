@@ -1,6 +1,7 @@
 package controllers
 
 import javax.inject.{Inject, Singleton}
+import lib.{Service, Services}
 import play.api.http.HttpEntity
 import play.api.libs.ws.{WSClient, StreamedResponse}
 import play.api.mvc._

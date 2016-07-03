@@ -1,4 +1,4 @@
-package controllers
+package lib
 
 import scala.io.Source
 
@@ -45,7 +45,16 @@ case class Services(all: Seq[Service]) {
   }
 
   def findByPath(path: String): Option[Service] = {
-    byPath.get(path.toLowerCase)
+    byPath.get(path.toLowerCase) match {
+      case Some(s) => Some(s)
+      case None => {
+        println(s"Could not find path[$path]. Tried:")
+        byPath.keys.toSeq.sorted.foreach { p =>
+          println(s" - [$p]")
+        }
+        None
+      }
+    }
   }
 
 }

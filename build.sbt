@@ -13,7 +13,7 @@ lazy val root = project
       filters,
       ws,
       "org.yaml" % "snakeyaml" % "1.17",
-      "org.scalatestplus" %% "play" % "1.4.0" % "test"
+      "org.scalatestplus.play" %% "scalatestplus-play" % "1.5.0" % "test"
     )
   )
 
@@ -24,10 +24,10 @@ val credsToUse = Option(System.getenv("ARTIFACTORY_USERNAME")) match {
 
 lazy val commonSettings: Seq[Setting[_]] = Seq(
   name <<= name("proxy-" + _),
-  libraryDependencies ++= Seq(
-    specs2 % Test,
-    "org.scalatest" %% "scalatest" % "2.2.6" % Test
-  ),
+//  libraryDependencies ++= Seq(
+//    specs2 % Test,
+//    "org.scalatest" %% "scalatest" % "2.2.6" % Test
+//  ),
   scalacOptions += "-feature",
   sources in (Compile,doc) := Seq.empty,
   publishArtifact in (Compile, packageDoc) := false,

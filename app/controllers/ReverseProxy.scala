@@ -2,6 +2,7 @@ package controllers
 
 import javax.inject.{Inject, Singleton}
 import lib.{Service, Services}
+import play.api.Logger
 import play.api.http.HttpEntity
 import play.api.libs.ws.{WSClient, StreamedResponse}
 import play.api.mvc._
@@ -23,16 +24,19 @@ case class ReverseProxy(
 
   def reverseProxy = Action.async(parse.raw) { request: Request[RawBuffer] =>
     services.findByPath(request.path) match {
-      case Some(service) => proxy(request, service)
+      case Some(service) => {
+        proxy(request, service)
+      }
+
       case None => Future {
-        println(s"reverseProxy Unrecognized path[${request.path}] - returning 404")
+        Logger.info(s"Unrecognized path[${request.path}] - returning 404")
         NotFound
       }
     }
   }
 
   def proxy(request: Request[RawBuffer], service: Service) = {
-    println(s"reverseProxy ${service.name} ${request.method} ${service.host}${request.path}")
+    Logger.info(s"Proxying ${request.method} ${request.path} to ${service.name} ${service.host}${request.path}")
 
     // Create the request to the upstream server:
     val proxyRequest = wsClient.url(service.host + request.path)

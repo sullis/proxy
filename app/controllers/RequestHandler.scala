@@ -1,8 +1,8 @@
 package controllers
 
 import lib.Services
-import javax.inject.{Inject, Singleton}
-import play.api.Configuration
+import javax.inject.Inject
+import play.api.{Configuration, Logger}
 import play.api.http.{HttpEntity, HttpRequestHandler}
 import play.api.libs.ws.{WSClient, StreamedResponse}
 import play.api.mvc._
@@ -25,6 +25,7 @@ class RequestHandler @Inject() (
       }
 
       case Right(services) => {
+        Logger.info(s"RequestHandler starting with ${services.all.size} services: " + services.all.map(_.name).sorted.mkString(", "))
         ReverseProxy(wsClient, services)
       }
     }

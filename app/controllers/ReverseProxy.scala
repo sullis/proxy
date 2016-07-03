@@ -36,7 +36,7 @@ case class ReverseProxy(
   }
 
   def proxy(request: Request[RawBuffer], service: Service) = {
-    Logger.info(s"Proxying ${request.method} ${request.path} to ${service.name} ${service.host}${request.path}")
+    Logger.info(s"Proxying ${request.method} ${request.path} to service[${service.name}] ${service.host}${request.path}")
 
     // Create the request to the upstream server:
     val proxyRequest = wsClient.url(service.host + request.path)

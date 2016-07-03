@@ -45,4 +45,13 @@ class ServiceSpec extends PlaySpec with OneServerPerSuite {
     s.findByPath("/users/usr-201606-128367123").map(_.name) must be(Some("user"))
   }
 
+  "route" in {
+    Route("GET", "/foo").hasOrganization must be(false)
+    Route("GET", "/users").hasOrganization must be(false)
+    Route("GET", "/organization").hasOrganization must be(false)
+    Route("GET", "/organization/catalog").hasOrganization must be(false)
+    Route("GET", "/:organization").hasOrganization must be(true)
+    Route("GET", "/:organization/catalog").hasOrganization must be(true)
+  }
+
 }

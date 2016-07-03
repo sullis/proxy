@@ -13,7 +13,16 @@ case class Service(
 case class Route(
   method: String,
   path: String
-)
+) {
+
+  /**
+    * By naming convention, if the path starts with /:organization, we
+    * know that we need to authenticate that the requesting user has
+    * access to that organization.
+    */
+  val hasOrganization: Boolean = path == "/:organization" || path.startsWith("/:organization/")
+
+}
 
 @Singleton
 class ServicesConfig @Inject() (

@@ -30,7 +30,6 @@ lazy val commonSettings: Seq[Setting[_]] = Seq(
   scalacOptions += "-feature",
   sources in (Compile,doc) := Seq.empty,
   publishArtifact in (Compile, packageDoc) := false,
-  coverageHighlighting := true,
   credentials += credsToUse,
   resolvers += "scalaz-bintray" at "https://dl.bintray.com/scalaz/releases",
   resolvers += "Artifactory" at "https://flow.artifactoryonline.com/flow/libs-release/"

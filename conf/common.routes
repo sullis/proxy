@@ -2,4 +2,4 @@
 # Service version: 0.0.41
 # apidoc:0.11.29 http://www.apidoc.me/flow/common/0.0.41/play_2_x_routes
 
-GET     /_internal_/healthcheck     controllers.Healthchecks.getHealthcheck()
+# GET     /_internal_/healthcheck     controllers.Healthchecks.getHealthcheck()

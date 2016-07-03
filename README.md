@@ -17,3 +17,6 @@ API Proxy server that is hosted at https://api.flow.io
 ## Future features:
 
   - Implement expansion by detecting 'expand' query parameters
+  
+  - Implement backwards compatibility layer by upgrading responses
+    from the latest version of the API to the user's requested version

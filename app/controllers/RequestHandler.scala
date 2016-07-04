@@ -11,14 +11,14 @@ class RequestHandler @Inject() (
   wsClient: WSClient,
   internal: Internal,
   servicesConfig: ServicesConfig
-) extends HttpRequestHandler with Handler {
+) extends HttpRequestHandler {
 
   private[this] val proxy = ReverseProxy(wsClient, servicesConfig.current)
 
   def handlerForRequest(request: RequestHeader) = {
-    (request.path) match {
-      case ("/_internal_/healthcheck") => (request, internal.getHealthcheck)
-      case ("/_internal_/config") => (request, internal.getConfig)
+    (request.method, request.path) match {
+      case ("GET", "/_internal_/healthcheck") => (request, internal.getHealthcheck)
+      case ("GET", "/_internal_/config") => (request, internal.getConfig)
       case _ => (request, proxy.reverseProxy)
     }
   }

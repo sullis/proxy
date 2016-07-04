@@ -39,7 +39,10 @@ class Internal @Inject() (
             "name" -> service.name,
             "host" -> service.host,
             "routes" -> service.routes.map { r =>
-              s"${r.method} ${r.path}"
+              Json.obj(
+                "method" -> r.method,
+                "path" -> r.path
+              )
             }
           )
         }

@@ -15,6 +15,11 @@ API Proxy server that is hosted at https://api.flow.io
 
 ## Future features:
 
+  - place information from token service, organization service into
+    the request headers, secure in some way (JWT ?). This way the
+    application servers themselves can skip the call to token service,
+    trusting the information in the headers.
+
   - Handles private vs. public paths
 
   - Implement expansion by detecting 'expand' query parameters

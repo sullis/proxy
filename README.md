@@ -7,7 +7,6 @@ API Proxy server that is hosted at https://api.flow.io
 ## Main features:
 
   - Resolves an incoming path to a backend application (e.g. /users =>  'user' application)
-  - Handles private vs. public paths
   - Authorizes the API token if present via the Authorization header (basic auth)
   - If the path contains an :organization prefix, verifies that the user identified
     by the API token has access to the organization (i.e. a membership record exists
@@ -15,6 +14,8 @@ API Proxy server that is hosted at https://api.flow.io
     prefix is valid.
 
 ## Future features:
+
+  - Handles private vs. public paths
 
   - Implement expansion by detecting 'expand' query parameters
   

@@ -16,14 +16,6 @@ case class Route(
 ) {
   assert(method == method.toUpperCase, s"Method[$method] must be in upper case")
   assert(path == path.toLowerCase, s"Path[$path] must be in lower case")
-
-  /**
-    * By naming convention, if the path starts with /:organization, we
-    * know that we need to authenticate that the requesting user has
-    * access to that organization.
-    */
-  val hasOrganization: Boolean = path == "/:organization" || path.startsWith("/:organization/")
-
 }
 
 @Singleton
@@ -77,8 +69,8 @@ case class Services(all: Seq[Service]) {
     }
   }
 
-  def findByMethodAndPath(method: String, path: String): Option[Service] = {
-    routes.find(_.matches(method.toUpperCase, path.toLowerCase.trim)).map { _.service }
+  def resolve(method: String, path: String): Option[InternalRoute] = {
+    routes.find(_.matches(method.toUpperCase, path.toLowerCase.trim))
   }
 
 }

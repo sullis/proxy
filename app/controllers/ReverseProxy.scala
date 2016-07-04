@@ -28,9 +28,19 @@ class ReverseProxy @Inject () (
   private[this] val services = servicesConfig.current()
 
   def handle = Action.async(parse.raw) { request: Request[RawBuffer] =>
-    services.findByMethodAndPath(request.method, request.path) match {
-      case Some(service) => {
-        proxy(request, service)
+    services.resolve(request.method, request.path) match {
+      case Some(internalRoute) => {
+        println("internalRoute: " + internalRoute)
+        internalRoute.hasOrganization match {
+          case true => {
+            println("TODO: Authorize org")
+            proxy(request, internalRoute.service)
+          }
+
+          case false => {
+            proxy(request, internalRoute.service)
+          }
+        }
       }
 
       case None => Future {

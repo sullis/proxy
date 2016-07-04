@@ -5,9 +5,18 @@ package lib
   */
 sealed trait InternalRoute {
 
+  def method: String
+  def path: String
   def service: Service
 
   def matches(method: String, path: String): Boolean 
+
+  /**
+    * By naming convention, if the path starts with /:organization, we
+    * know that we need to authenticate that the requesting user has
+    * access to that organization.
+    */
+  val hasOrganization: Boolean = path == "/:organization" || path.startsWith("/:organization/")
 
 }
 
@@ -16,7 +25,7 @@ object InternalRoute {
   /**
     * Represents a static route (e.g. /organizations) with no wildcards
     */
-  case class Static(method: String, path: String, override val service: Service) extends InternalRoute {
+  case class Static(method: String, path: String, service: Service) extends InternalRoute {
     assert(method == method.toUpperCase.trim, s"Method[$method] must be upper case trimmed")
     assert(path == path.toLowerCase.trim, s"path[$path] must be lower case trimmed")
 
@@ -32,7 +41,7 @@ object InternalRoute {
     * that replaces any ":xxx" with a pattern of one or more
     * characters that are not a '/'
     */
-  case class Dynamic(method: String, path: String, override val service: Service) extends InternalRoute {
+  case class Dynamic(method: String, path: String, service: Service) extends InternalRoute {
     assert(method == method.toUpperCase.trim, s"Method[$method] must be upper case trimmed")
     assert(path == path.toLowerCase.trim, s"path[$path] must be lower case trimmed")
 

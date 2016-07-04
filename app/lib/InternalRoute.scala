@@ -11,12 +11,24 @@ sealed trait InternalRoute {
 
   def matches(method: String, path: String): Boolean 
 
+  private[this] val hasOrganization: Boolean = path == "/:organization" || path.startsWith("/:organization/")
+
   /**
     * By naming convention, if the path starts with /:organization, we
     * know that we need to authenticate that the requesting user has
     * access to that organization.
     */
-  val hasOrganization: Boolean = path == "/:organization" || path.startsWith("/:organization/")
+  def organization(requestPath: String): Option[String] = {
+    hasOrganization match {
+      case false => None
+      case true => {
+        requestPath.split("/").toList match {
+          case empty :: org :: rest => Some(org)
+          case _ => sys.error(s"Service[${service.name}] $method $path: Could not extract organization from path[$requestPath]")
+        }
+      }
+    }
+  }
 
 }
 

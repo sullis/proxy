@@ -51,7 +51,7 @@ class ServiceSpec extends PlaySpec with OneServerPerSuite {
     s.resolve("PUT", "/users/usr-201606-128367123").map(_.service.name) must be(Some("user"))
   }
 
-  "route" in {
+  "organization" in {
     val service = Service(
       "organization",
       "https://organization.api.flow.io",
@@ -61,12 +61,19 @@ class ServiceSpec extends PlaySpec with OneServerPerSuite {
       )
     )
 
-    InternalRoute.Static("GET", "/foo", service).hasOrganization must be(false)
-    InternalRoute.Static("GET", "/users", service).hasOrganization must be(false)
-    InternalRoute.Static("GET", "/organization", service).hasOrganization must be(false)
-    InternalRoute.Static("GET", "/organization/catalog", service).hasOrganization must be(false)
-    InternalRoute.Static("GET", "/:organization", service).hasOrganization must be(true)
-    InternalRoute.Static("GET", "/:organization/catalog", service).hasOrganization must be(true)
+    InternalRoute.Static("GET", "/foo", service).organization("/foo") must be(None)
+    InternalRoute.Static("GET", "/users", service).organization("/foo") must be(None)
+    InternalRoute.Static("GET", "/organization", service).organization("/foo") must be(None)
+    InternalRoute.Static("GET", "/organization/catalog", service).organization("/foo") must be(None)
+    InternalRoute.Static("GET", "/:organization", service).organization("/flow") must be(Some("flow"))
+    InternalRoute.Static("GET", "/:organization/catalog", service).organization("/flow/catalog") must be(Some("flow"))
+
+    InternalRoute.Dynamic("GET", "/foo/:id", service).organization("/foo") must be(None)
+    InternalRoute.Dynamic("GET", "/users/:id", service).organization("/foo") must be(None)
+    InternalRoute.Dynamic("GET", "/organization/:id", service).organization("/foo") must be(None)
+    InternalRoute.Dynamic("GET", "/organization/catalog/:id", service).organization("/foo") must be(None)
+    InternalRoute.Dynamic("GET", "/:organization/:id", service).organization("/flow/5") must be(Some("flow"))
+    InternalRoute.Dynamic("GET", "/:organization/catalog/:id", service).organization("/flow/catalog/5") must be(Some("flow"))
   }
 
 }

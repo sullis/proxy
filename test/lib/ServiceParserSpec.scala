@@ -68,8 +68,8 @@ user:
         }
 
         val s = Services(services)
-        Seq("/users", "/organizations", "/:organization/catalog").foreach { path =>
-          s.findByPath(path).getOrElse {
+        Seq(("GET", "/users"), ("GET", "/organizations"), ("GET", "/:organization/catalog")).foreach { case (method, path) =>
+          s.findByMethodAndPath(method, path).getOrElse {
             sys.error(s"Failed to resolve path[$path]")
           }
         }

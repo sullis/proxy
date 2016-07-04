@@ -15,7 +15,8 @@ class ServiceSpec extends PlaySpec with OneServerPerSuite {
         routes = Seq(
           Route("GET", "/organizations"),
           Route("POST", "/organizations"),
-          Route("GET", "/organizations/:id")
+          Route("GET", "/organizations/:id"),
+          Route("PUT", "/organizations/:id")
         )
       ),
       Service(
@@ -24,7 +25,8 @@ class ServiceSpec extends PlaySpec with OneServerPerSuite {
         routes = Seq(
           Route("GET", "/users"),
           Route("POST", "/users"),
-          Route("GET", "/users/:id")
+          Route("GET", "/users/:id"),
+          Route("PUT", "/users/:id")
         )
       )
     )
@@ -32,17 +34,21 @@ class ServiceSpec extends PlaySpec with OneServerPerSuite {
     val s = Services(services)
 
     // Undefined
-    s.findByPath("") must be(None)
-    s.findByPath("/") must be(None)
-    s.findByPath("/tmp") must be(None)
+    s.findByMethodAndPath("GET", "") must be(None)
+    s.findByMethodAndPath("GET", "/") must be(None)
+    s.findByMethodAndPath("GET", "/tmp") must be(None)
 
     // static
-    s.findByPath("/organizations").map(_.name) must be(Some("organization"))
-    s.findByPath("/users").map(_.name) must be(Some("user"))
+    s.findByMethodAndPath("GET", "/organizations").map(_.name) must be(Some("organization"))
+    s.findByMethodAndPath("POST", "/organizations").map(_.name) must be(Some("organization"))
+    s.findByMethodAndPath("GET", "/users").map(_.name) must be(Some("user"))
+    s.findByMethodAndPath("POST", "/users").map(_.name) must be(Some("user"))
 
     // dynamic
-    s.findByPath("/organizations/flow").map(_.name) must be(Some("organization"))
-    s.findByPath("/users/usr-201606-128367123").map(_.name) must be(Some("user"))
+    s.findByMethodAndPath("GET", "/organizations/flow").map(_.name) must be(Some("organization"))
+    s.findByMethodAndPath("PUT", "/organizations/flow").map(_.name) must be(Some("organization"))
+    s.findByMethodAndPath("GET", "/users/usr-201606-128367123").map(_.name) must be(Some("user"))
+    s.findByMethodAndPath("PUT", "/users/usr-201606-128367123").map(_.name) must be(Some("user"))
   }
 
   "route" in {

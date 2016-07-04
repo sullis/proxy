@@ -14,6 +14,8 @@ case class Route(
   method: String,
   path: String
 ) {
+  assert(method == method.toUpperCase, s"Method[$method] must be in upper case")
+  assert(path == path.toLowerCase, s"Path[$path] must be in lower case")
 
   /**
     * By naming convention, if the path starts with /:organization, we
@@ -75,8 +77,8 @@ case class Services(all: Seq[Service]) {
     }
   }
 
-  def findByPath(path: String): Option[Service] = {
-    routes.find(_.matches(path.toLowerCase.trim)).map { _.service }
+  def findByMethodAndPath(method: String, path: String): Option[Service] = {
+    routes.find(_.matches(method.toUpperCase, path.toLowerCase.trim)).map { _.service }
   }
 
 }

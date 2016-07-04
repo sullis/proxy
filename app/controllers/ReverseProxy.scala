@@ -23,7 +23,7 @@ case class ReverseProxy(
   private[this] implicit val ec = scala.concurrent.ExecutionContext.Implicits.global
 
   def reverseProxy = Action.async(parse.raw) { request: Request[RawBuffer] =>
-    services.findByPath(request.path) match {
+    services.findByMethodAndPath(request.method, request.path) match {
       case Some(service) => {
         proxy(request, service)
       }

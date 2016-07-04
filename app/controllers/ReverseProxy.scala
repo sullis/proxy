@@ -1,18 +1,21 @@
 package controllers
 
+import io.flow.token.v0.{Client => TokenClient}
 import javax.inject.{Inject, Singleton}
-import lib.{Service, Services}
+import lib.{Service, ServicesConfig}
 import play.api.Logger
 import play.api.http.HttpEntity
 import play.api.libs.ws.{WSClient, StreamedResponse}
 import play.api.mvc._
 import scala.concurrent.Future
 
-case class ReverseProxy(
+@Singleton
+class ReverseProxy @Inject () (
   wsClient: WSClient,
-  services: Services
+  servicesConfig: ServicesConfig
 ) extends Controller {
 
+  val tokenClient = new TokenClient()
   private[this] val VirtualHostName = "api.flow.io"
 
   // WS Client defaults to application/octet-stream. Given this proxy
@@ -22,7 +25,9 @@ case class ReverseProxy(
 
   private[this] implicit val ec = scala.concurrent.ExecutionContext.Implicits.global
 
-  def reverseProxy = Action.async(parse.raw) { request: Request[RawBuffer] =>
+  private[this] val services = servicesConfig.current()
+
+  def handle = Action.async(parse.raw) { request: Request[RawBuffer] =>
     services.findByMethodAndPath(request.method, request.path) match {
       case Some(service) => {
         proxy(request, service)
@@ -35,7 +40,7 @@ case class ReverseProxy(
     }
   }
 
-  def proxy(request: Request[RawBuffer], service: Service) = {
+  private[this] def proxy(request: Request[RawBuffer], service: Service) = {
     Logger.info(s"Proxying ${request.method} ${request.path} to service[${service.name}] ${service.host}${request.path}")
 
     // Create the request to the upstream server:

@@ -154,7 +154,7 @@ class ReverseProxy @Inject () (
   }
 
   private[this] def proxy(request: Request[RawBuffer], service: Service, userId: Option[String], organization: Option[String]) = {
-    Logger.info(s"Proxying ${request.method} ${request.path} to service[${service.name}] ${service.host}${request.path}")
+    Logger.info(s"Proxying ${request.method} ${request.path} to service[${service.name}] ${service.host}${request.path} userId[${userId.getOrElse("none")}] organization[${organization.getOrElse("none")}]")
     val finalHeaders = proxyHeaders(
       request.headers,
       Seq(

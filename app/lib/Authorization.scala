@@ -55,7 +55,7 @@ class AuthorizationParser @Inject() (
   config: Config
 ) {
 
-  private[this] val jwtSalt = config.requiredString("JWT_SALT")
+  private[this] lazy val jwtSalt = config.requiredString("JWT_SALT")
 
   /**
     * Parses the value fro the authorization header, handling case

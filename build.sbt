@@ -12,6 +12,7 @@ lazy val root = project
     libraryDependencies ++= Seq(
       filters,
       ws,
+      "com.jason-goodwin" %% "authentikat-jwt" % "0.4.1",
       "org.yaml" % "snakeyaml" % "1.17",
       "org.scalatestplus.play" %% "scalatestplus-play" % "1.5.0" % "test"
     )

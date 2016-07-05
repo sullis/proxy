@@ -4,6 +4,7 @@ import akka.actor.ActorSystem
 import com.google.inject.AbstractModule
 import com.google.inject.assistedinject.{Assisted, FactoryModuleBuilder}
 import concurrent.ExecutionContext
+import java.util.UUID
 import java.util.concurrent.Executors
 import javax.inject.Inject
 import play.api.Logger
@@ -58,7 +59,6 @@ class ServiceProxyImpl @Inject () (
 
   implicit val ec = {
     val name = s"${service.name}-context"
-    println(s"name: $name")
     Try {
       system.dispatchers.lookup(name)
     } match {
@@ -68,7 +68,7 @@ class ServiceProxyImpl @Inject () (
       }
 
       case Failure(_) => {
-        Logger.info(s"ServiceProxy[${service.name}] execution context[${name}] not found - using context[$DefaultContextName]")
+        Logger.info(s"ServiceProxy[${service.name}] execution context[${name}] not found - using $DefaultContextName")
         system.dispatchers.lookup(DefaultContextName)
       }
     }
@@ -85,7 +85,8 @@ class ServiceProxyImpl @Inject () (
     organization: Option[String],
     role: Option[String]
   ) = {
-    Logger.info(s"Proxying ${request.method} ${request.path} to service[${service.name}] ${service.host}${request.path} userId[${userId.getOrElse("none")}] organization[${organization.getOrElse("none")}] role[${role.getOrElse("none")}]")
+    val requestId = UUID.randomUUID.toString()
+    Logger.info(s"[${service.name}] ${request.method} ${service.host}${request.path} userId[${userId.getOrElse("none")}] organization[${organization.getOrElse("none")}] role[${role.getOrElse("none")}] requestId[$requestId]")
 
     val finalHeaders = proxyHeaders(
       request.headers,
@@ -104,10 +105,15 @@ class ServiceProxyImpl @Inject () (
       .withQueryString(request.queryString.mapValues(_.head).toSeq: _*)
       .withBody(request.body.asBytes().get)
 
+    val startMs = System.currentTimeMillis
+
     req.stream.map {
       case StreamedResponse(response, body) => {
         val contentType: Option[String] = response.headers.get("Content-Type").flatMap(_.headOption)
         val contentLength: Option[Long] = response.headers.get("Content-Length").flatMap(_.headOption).flatMap(toLongSafe(_))
+
+        val timeToFirstByteMs = System.currentTimeMillis - startMs
+        Logger.info(s"[${service.name}] ${response.status} ${request.method} ${request.path} firstByteMs[$timeToFirstByteMs] requestId[$requestId]")
 
         // If there's a content length, send that, otherwise return the body chunked
         contentLength match {

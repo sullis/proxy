@@ -106,7 +106,8 @@ class ReverseProxy @Inject () (
           request,
           internalRoute.service,
           userId = userId,
-          organization = None
+          organization = None,
+          role = None
         )
       }
 
@@ -117,7 +118,6 @@ class ReverseProxy @Inject () (
           }
 
           case Some(uid) => {
-            Logger.info(s"Checking membership of user[$uid] in organization[$org]")
             organizationClient.memberships.get(
               user = Some(uid),
               organization = Some(org),
@@ -130,12 +130,12 @@ class ReverseProxy @Inject () (
                 }
 
                 case Some(membership) => {
-                  Logger.info(s"Authorized: user[$uid] is a ${membership.role} of organization[$org]")
                   proxy(
                     request,
                     internalRoute.service,
                     userId = Some(uid),
-                    organization = Some(org)
+                    organization = Some(org),
+                    role = Some(membership.role.toString)
                   )
                 }
               }
@@ -154,14 +154,15 @@ class ReverseProxy @Inject () (
     }
   }
 
-  private[this] def proxy(request: Request[RawBuffer], service: Service, userId: Option[String], organization: Option[String]) = {
-    Logger.info(s"Proxying ${request.method} ${request.path} to service[${service.name}] ${service.host}${request.path} userId[${userId.getOrElse("none")}] organization[${organization.getOrElse("none")}]")
+  private[this] def proxy(request: Request[RawBuffer], service: Service, userId: Option[String], organization: Option[String], role: Option[String]) = {
+    Logger.info(s"Proxying ${request.method} ${request.path} to service[${service.name}] ${service.host}${request.path} userId[${userId.getOrElse("none")}] organization[${organization.getOrElse("none")}] role[${role.getOrElse("none")}]")
     val finalHeaders = proxyHeaders(
       request.headers,
       Seq(
         "X-Flow-Proxy-Service" -> Some(service.name),
         "X-Flow-User-Id" -> userId,
-        "X-Flow-Organization" -> organization
+        "X-Flow-Organization" -> organization,
+        "X-Flow-Role" -> role
       ).flatMap { case (k, v) => v.map { (k, _) } }
     )
 

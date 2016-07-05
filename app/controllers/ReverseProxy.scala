@@ -14,6 +14,7 @@ import play.api.libs.json.Json
 import play.api.mvc._
 import org.apache.commons.codec.binary.Base64
 import scala.concurrent.Future
+import scala.util.{Failure, Success, Try}
 
 @Singleton
 class ReverseProxy @Inject () (
@@ -164,10 +165,9 @@ class ReverseProxy @Inject () (
       ).flatMap { case (k, v) => v.map { (k, _) } }
     )
 
-    println("HEADERS: " + finalHeaders.headers)
+    println("  - headers: " + finalHeaders.headers)
 
-    // Create the request to the upstream server:
-    val proxyRequest = wsClient.url(service.host + request.path)
+    val req = wsClient.url(service.host + request.path)
       .withFollowRedirects(false)
       .withMethod(request.method)
       .withVirtualHost(virtualHostName)
@@ -175,24 +175,23 @@ class ReverseProxy @Inject () (
       .withQueryString(request.queryString.mapValues(_.head).toSeq: _*)
       .withBody(request.body.asBytes().get)
 
-    proxyRequest.stream.map {
+    req.stream.map {
       case StreamedResponse(response, body) => {
-        // Get the content type
         val contentType: Option[String] = response.headers.get("Content-Type").flatMap(_.headOption)
-        println(s"contentType[$contentType]")
+        val contentLength: Option[Long] = response.headers.get("Content-Length").flatMap(_.headOption).flatMap(toLongSafe(_))
 
         // If there's a content length, send that, otherwise return the body chunked
-        response.headers.get("Content-Length") match {
-          case Some(Seq(length)) => {
-            println(s"length[$length]")
-            Ok.sendEntity(HttpEntity.Streamed(body, Some(length.toLong), contentType))
+        contentLength match {
+          case Some(length) => {
+            println(s"  - response contentType[${contentType.getOrElse("none")}] length[$length]")
+            Status(response.status).sendEntity(HttpEntity.Streamed(body, Some(length), contentType))
           }
 
-          case _ => {
-            println(s"length[none]")
+          case None => {
+            println(s"  - response contentType[${contentType.getOrElse("none")}] length[none]")
             contentType match {
-              case None => Ok.chunked(body)
-              case Some(ct) => Ok.chunked(body).as(ct)
+              case None => Status(response.status).chunked(body)
+              case Some(ct) => Status(response.status).chunked(body).as(ct)
             }
           }
         }
@@ -228,4 +227,12 @@ class ReverseProxy @Inject () (
     )
   }
 
+  private[this] def toLongSafe(value: String): Option[Long] = {
+    Try {
+      value.toLong
+    } match {
+      case Success(v) => Some(v)
+      case Failure(_) => None
+    }
+  }
 }

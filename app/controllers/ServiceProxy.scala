@@ -54,6 +54,8 @@ class ServiceProxyImpl @Inject () (
   @Assisted service: Service
 ) extends ServiceProxy with Controller{
 
+  private[this] val DefaultContextName = s"default-service-context"
+
   implicit val ec = {
     val name = s"${service.name}-context"
     println(s"name: $name")
@@ -66,18 +68,9 @@ class ServiceProxyImpl @Inject () (
       }
 
       case Failure(_) => {
-        Logger.info(s"ServiceProxy[${service.name}] execution context[${name}] not found - creating default")
-        createDefault()
+        Logger.info(s"ServiceProxy[${service.name}] execution context[${name}] not found - using context[$DefaultContextName]")
+        system.dispatchers.lookup(DefaultContextName)
       }
-    }
-  }
-
-  private[this] def createDefault(): ExecutionContext = {
-    new ExecutionContext {
-      val threadPool = Executors.newFixedThreadPool(100)
-      override def reportFailure(cause: Throwable): Unit = {}
-      override def execute(runnable: Runnable): Unit = threadPool.submit(runnable)
-      def shutdown() = threadPool.shutdown()
     }
   }
 

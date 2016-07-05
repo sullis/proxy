@@ -1,5 +1,6 @@
 package controllers
 
+import akka.actor.ActorSystem
 import io.flow.common.v0.models.Error
 import io.flow.common.v0.models.json._
 import io.flow.token.v0.{Client => TokenClient}
@@ -17,6 +18,7 @@ import scala.util.{Failure, Success, Try}
 
 @Singleton
 class ReverseProxy @Inject () (
+  system: ActorSystem,
   authorizationParser: AuthorizationParser,
   config: Config,
   servicesConfig: ServicesConfig,
@@ -31,8 +33,7 @@ class ReverseProxy @Inject () (
 
   private[this] val virtualHostName = config.requiredString("virtual.host.name")
 
-  // TODO: Need a context
-  private[this] implicit val ec = scala.concurrent.ExecutionContext.Implicits.global
+  private[this] implicit val ec = system.dispatchers.lookup("reverse-proxy-context")
 
   private[this] val services = servicesConfig.current()
 

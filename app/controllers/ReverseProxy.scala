@@ -9,7 +9,6 @@ import io.flow.token.v0.models.TokenReference
 import javax.inject.{Inject, Singleton}
 import lib.{Authorization, AuthorizationParser, Config, InternalRoute, Service, ServicesConfig}
 import play.api.Logger
-import play.api.http.HttpEntity
 import play.api.libs.json.Json
 import play.api.mvc._
 import org.apache.commons.codec.binary.Base64
@@ -35,7 +34,15 @@ class ReverseProxy @Inject () (
 
   private[this] implicit val ec = system.dispatchers.lookup("reverse-proxy-context")
 
-  private[this] val services = servicesConfig.current()
+  val services = servicesConfig.current()
+
+  private[this] val proxies: Map[String, ServiceProxy] = {
+    Map(
+      services.all.map { s =>
+        (s.name -> serviceProxyFactory(s))
+      }: _*
+    )
+  }
 
   def handle = Action.async(parse.raw) { request: Request[RawBuffer] =>
     services.resolve(request.method, request.path) match {
@@ -98,9 +105,8 @@ class ReverseProxy @Inject () (
   private[this] def proxyWithOrg(request: Request[RawBuffer], internalRoute: InternalRoute, userId: Option[String]): Future[Result] = {
     internalRoute.organization(request.path) match {
       case None  => {
-        proxy(
+        lookup(internalRoute.service).proxy(
           request,
-          internalRoute.service,
           userId = userId,
           organization = None,
           role = None
@@ -126,9 +132,8 @@ class ReverseProxy @Inject () (
                 }
 
                 case Some(membership) => {
-                  proxy(
+                  lookup(internalRoute.service).proxy(
                     request,
-                    internalRoute.service,
                     userId = Some(uid),
                     organization = Some(org),
                     role = Some(membership.role.toString)
@@ -150,8 +155,10 @@ class ReverseProxy @Inject () (
     }
   }
 
-  private[this] def proxy(request: Request[RawBuffer], service: Service, userId: Option[String], organization: Option[String], role: Option[String]) = {
-    serviceProxyFactory(service).proxy(request, userId = userId, organization = organization, role = role)
+  private[this] def lookup(service: Service): ServiceProxy = {
+    proxies.get(service.name).getOrElse {
+      sys.error(s"Service[${service.name}] no proxy found")
+    }
   }
 
   private[this] def unauthorized(message: String) = {

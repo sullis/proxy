@@ -1,15 +1,11 @@
 package controllers
 
-import io.flow.token.v0.{Client => TokenClient}
 import javax.inject.Inject
 import lib.ServicesConfig
-import play.api.http.{HttpEntity, HttpRequestHandler}
-import play.api.libs.ws.{WSClient, StreamedResponse}
+import play.api.http.HttpRequestHandler
 import play.api.mvc._
-import scala.concurrent.Future
 
 class RequestHandler @Inject() (
-  wsClient: WSClient,
   internal: Internal,
   proxy: ReverseProxy
 ) extends HttpRequestHandler {

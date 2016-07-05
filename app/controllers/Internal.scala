@@ -8,7 +8,7 @@ import play.api.libs.json._
 
 @Singleton
 class Internal @Inject() (
-  servicesConfig: ServicesConfig
+  reverseProxy: ReverseProxy
 ) extends Controller {
 
   private[this] val HealthyJson = Json.obj(
@@ -16,7 +16,7 @@ class Internal @Inject() (
   )
 
   def getHealthcheck() = Action { request =>
-    servicesConfig.current.all.toList match {
+    reverseProxy.services.all.toList match {
       case Nil => {
         UnprocessableEntity(
           Json.toJson(
@@ -34,7 +34,7 @@ class Internal @Inject() (
   def getConfig() = Action { request =>
     Ok(
       Json.toJson(
-        servicesConfig.current.all.map { service =>
+        reverseProxy.services.all.map { service =>
           Json.obj(
             "name" -> service.name,
             "host" -> service.host,

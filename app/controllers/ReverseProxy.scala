@@ -164,6 +164,8 @@ class ReverseProxy @Inject () (
       ).flatMap { case (k, v) => v.map { (k, _) } }
     )
 
+    println("HEADERS: " + finalHeaders.headers)
+
     // Create the request to the upstream server:
     val proxyRequest = wsClient.url(service.host + request.path)
       .withFollowRedirects(false)
@@ -177,20 +179,26 @@ class ReverseProxy @Inject () (
       case StreamedResponse(response, body) => {
         // Get the content type
         val contentType: Option[String] = response.headers.get("Content-Type").flatMap(_.headOption)
+        println(s"contentType[$contentType]")
 
         // If there's a content length, send that, otherwise return the body chunked
         response.headers.get("Content-Length") match {
           case Some(Seq(length)) => {
+            println(s"length[$length]")
             Ok.sendEntity(HttpEntity.Streamed(body, Some(length.toLong), contentType))
           }
 
           case _ => {
+            println(s"length[none]")
             contentType match {
               case None => Ok.chunked(body)
               case Some(ct) => Ok.chunked(body).as(ct)
             }
           }
         }
+      }
+      case other => {
+        sys.error("Unhandled response: " + other)
       }
     }
   }
@@ -214,7 +222,7 @@ class ReverseProxy @Inject () (
     Unauthorized(
       Json.toJson(
         Seq(
-          Error("authorization_failed", "Please add an authorization header. Flow APIs expect a valid API token using basic authorization.")
+          Error("authorization_failed", message)
         )
       )
     )

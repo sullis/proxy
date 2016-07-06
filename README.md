@@ -16,9 +16,16 @@ API Proxy server that is hosted at https://api.flow.io
   - Implements optional configuration of independent thread pools for each backend
     service (catalog service has one thread pool)
 
-## Future features:
+## Bypassing proxy
 
-  - Handles private vs. public paths
+You can manually specify to which server to route a request by adding
+a request header named X-Flow-Service with the name of the service to
+route to (e.g. 'organization').
+
+If this header is detected, you must provide an authorization header
+for a user that is a member of the flow 'organization'.
+
+## Future features:
 
   - Implement expansion by detecting 'expand' query parameters
   

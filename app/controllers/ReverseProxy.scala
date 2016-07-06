@@ -86,42 +86,43 @@ class ReverseProxy @Inject () (
   }
 
   private[this] def proxyPostAuth(request: Request[RawBuffer], userId: Option[String]): Future[Result] = {
-    resolve(request.method, request.path, request.headers.get(Constants.Headers.FlowService)) match {
-      case None => Future {
-        Logger.info(s"Unrecognized path[${request.path}] - returning 404")
-        NotFound
-      }
+    resolve(request, userId).flatMap { result =>
+      result match {
+        case Left(result) => Future {
+          result
+        }
 
-      case Some(internalRoute) => {
-        internalRoute.organization(request.path) match {
-          case None  => {
-            lookup(internalRoute.service).proxy(
-              request,
-              userId = userId,
-              organization = None,
-              role = None
-            )
-          }
+        case Right(internalRoute) => {
+          internalRoute.organization(request.path) match {
+            case None  => {
+              lookup(internalRoute.service).proxy(
+                request,
+                userId = userId,
+                organization = None,
+                role = None
+              )
+            }
 
-          case Some(org) => {
-            userId match {
-              case None => Future {
-                unauthorized("You must set a valid Authorization header")
-              }
+            case Some(org) => {
+              userId match {
+                case None => Future {
+                  unauthorized("You must set a valid Authorization header")
+                }
 
-              case Some(uid) => {
-                resolveMembership(uid, org).flatMap {
-                  case None => Future {
-                    unauthorized(s"Not authorized to access $org or the organization does not exist")
-                  }
+                case Some(uid) => {
+                  resolveMembership(uid, org).flatMap {
+                    case None => Future {
+                      unauthorized(s"Not authorized to access $org or the organization does not exist")
+                    }
 
-                  case Some(membership) => {
-                    lookup(internalRoute.service).proxy(
-                      request,
-                      userId = Some(uid),
-                      organization = Some(org),
-                      role = Some(membership.role.toString)
-                    )
+                    case Some(membership) => {
+                      lookup(internalRoute.service).proxy(
+                        request,
+                        userId = Some(uid),
+                        organization = Some(org),
+                        role = Some(membership.role.toString)
+                      )
+                    }
                   }
                 }
               }
@@ -135,25 +136,69 @@ class ReverseProxy @Inject () (
   /**
     * Resolves the incoming method and path to a specific interanl route.
     * 
-    * @param serviceNameOverride If specified, we use this service name.
-    *        Otherwise we resolve by path.
+    * @param serviceNameOverride If specified, we verify that we have a auth token identifying
+    *                            a user that is a member of the flow organization. If so, we
+    *                            use this service name. Otherwise we return an error.
     */
-  private[this] def resolve(method: String, path: String, serviceNameOverride: Option[String]): Option[InternalRoute] = {
-    serviceNameOverride.flatMap(findServiceByName(_)) match {
-      case None => {
-        index.resolve(method, path)
+  private[this] def resolve(request: Request[RawBuffer], userId: Option[String]): Future[Either[Result, InternalRoute]] = {
+    val method = request.method
+    val path = request.path
+    val serviceNameOverride: Option[String] = request.headers.get(Constants.Headers.FlowService)
+
+    serviceNameOverride match {
+      case None => Future {
+        index.resolve(method, path) match {
+          case None => {
+            Logger.info(s"Unrecognized path[$path] - returning 404")
+            Left(NotFound)
+          }
+
+          case Some(ir) => {
+            Right(ir)
+          }
+        }
       }
 
-      case Some(svc) => {
-        Some(
-          InternalRoute(
-            route = Route(
-              method = method,
-              path = path
-            ),
-            service = svc
-          )
-        )
+      case Some(name) => {
+        userId match {
+          case None => Future {
+            Left(
+              unauthorized(s"Must authenticate to specify[${Constants.Headers.FlowService}]")
+            )
+          }
+
+          case Some(uid) => {
+            resolveMembership(uid, Constants.FlowOrganizationId).map {
+              case None => {
+                Left(
+                  unauthorized(s"Not authorized to access organization[${Constants.FlowOrganizationId}]")
+                )
+              }
+
+              case Some(_) => {
+                findServiceByName(name) match {
+                  case None => {
+                    Left(
+                      notFound(s"Invalid service name from Request Header[${Constants.Headers.FlowService}]")
+                    )
+                  }
+
+                  case Some(svc) => {
+                    Right(
+                      InternalRoute(
+                        route = Route(
+                          method = method,
+                          path = path
+                        ),
+                        service = svc
+                      )
+                    )
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     }
   }

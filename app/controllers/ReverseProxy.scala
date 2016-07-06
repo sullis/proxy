@@ -37,8 +37,6 @@ class ReverseProxy @Inject () (
   private[this] val tokenServiceUrl = config.requiredString("service.token.uri")
   private[this] val tokenClient = new TokenClient(baseUrl = tokenServiceUrl)
 
-  private[this] val virtualHostName = config.requiredString("virtual.host.name")
-
   private[this] implicit val ec = system.dispatchers.lookup("reverse-proxy-context")
 
   private[this] val proxies: Map[String, ServiceProxy] = {

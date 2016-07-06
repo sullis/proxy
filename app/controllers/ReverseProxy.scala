@@ -24,8 +24,15 @@ class ReverseProxy @Inject () (
   serviceProxyFactory: ServiceProxy.Factory
 ) extends Controller {
 
-  private[this] val organizationServiceUrl = config.requiredString("service.organization.uri")
-  private[this] val organizationClient = new OrganizationClient(baseUrl = organizationServiceUrl)
+  val index: Index = proxyConfigFetcher.current()
+
+  private[this] val organizationClient = {
+    val svc = index.config.services.find(_.name == "organization").getOrElse {
+      sys.error("There is no service named 'organization' in the current config: " + config)
+    }
+    Logger.info(s"Creating OrganizationClient w/ baseUrl[${svc.host}]")
+    new OrganizationClient(baseUrl = svc.host)
+  }
 
   private[this] val tokenServiceUrl = config.requiredString("service.token.uri")
   private[this] val tokenClient = new TokenClient(baseUrl = tokenServiceUrl)
@@ -33,8 +40,6 @@ class ReverseProxy @Inject () (
   private[this] val virtualHostName = config.requiredString("virtual.host.name")
 
   private[this] implicit val ec = system.dispatchers.lookup("reverse-proxy-context")
-
-  val index: Index = proxyConfigFetcher.current()
 
   private[this] val proxies: Map[String, ServiceProxy] = {
     Logger.info(s"ReverseProxy loading config version: ${index.config.version}")

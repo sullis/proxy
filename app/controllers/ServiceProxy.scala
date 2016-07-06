@@ -82,13 +82,13 @@ class ServiceProxyImpl @Inject () (
   // provided.
   private[this] val DefaultContentType = "application/json"
 
-  override def proxy(
+  override final def proxy(
     request: Request[RawBuffer],
     userId: Option[String],
     organization: Option[String],
     role: Option[String]
   ) = {
-    val requestId = UUID.randomUUID.toString()
+    //val requestId = UUID.randomUUID.toString()
     //Logger.info(s"[${service.name}] ${request.method} ${service.host}${request.path} userId[${userId.getOrElse("none")}] organization[${organization.getOrElse("none")}] role[${role.getOrElse("none")}] requestId[$requestId]")
 
     val finalHeaders = proxyHeaders(
@@ -107,15 +107,15 @@ class ServiceProxyImpl @Inject () (
       .withQueryString(request.queryString.mapValues(_.head).toSeq: _*)
       .withBody(request.body.asBytes().get)
 
-    val startMs = System.currentTimeMillis
+    //val startMs = System.currentTimeMillis
 
     req.stream.map {
       case StreamedResponse(response, body) => {
+        //val timeToFirstByteMs = System.currentTimeMillis - startMs
         val contentType: Option[String] = response.headers.get("Content-Type").flatMap(_.headOption)
         val contentLength: Option[Long] = response.headers.get("Content-Length").flatMap(_.headOption).flatMap(toLongSafe(_))
 
-        val timeToFirstByteMs = System.currentTimeMillis - startMs
-        //Logger.info(s"[${service.name}] ${request.method} ${request.path} ${response.status} ${timeToFirstByteMs}msFirstByte requestId[$requestId]")
+        //Logger.info(s"[${service.name}] ${request.method} ${request.path} ${response.status} ${timeToFirstByteMs}ms requestId[$requestId]")
 
         // If there's a content length, send that, otherwise return the body chunked
         contentLength match {

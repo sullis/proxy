@@ -36,6 +36,9 @@ trait ServiceProxy {
 }
 
 object ServiceProxy {
+
+  val DefaultContextName = s"default-service-context"
+
   trait Factory {
     def apply(service: Service): ServiceProxy
   }
@@ -57,25 +60,26 @@ class ServiceProxyImpl @Inject () (
   @Assisted service: Service
 ) extends ServiceProxy with Controller{
 
-  private[this] val DefaultContextName = s"default-service-context"
   private[this] lazy val jwtSalt = config.requiredString("jwt.salt")
 
-  implicit val ec = {
+  private[this] implicit val (ec, name) = {
     val name = s"${service.name}-context"
     Try {
       system.dispatchers.lookup(name)
     } match {
       case Success(ec) => {
         Logger.info(s"ServiceProxy[${service.name}] using configured execution context[${name}]")
-        ec
+        (ec, name)
       }
 
       case Failure(_) => {
-        Logger.info(s"ServiceProxy[${service.name}] execution context[${name}] not found - using $DefaultContextName")
-        system.dispatchers.lookup(DefaultContextName)
+        Logger.warn(s"ServiceProxy[${service.name}] execution context[${name}] not found - using ${ServiceProxy.DefaultContextName}")
+        (system.dispatchers.lookup(ServiceProxy.DefaultContextName), ServiceProxy.DefaultContextName)
       }
     }
   }
+
+  val executionContextName: String = name
 
   // WS Client defaults to application/octet-stream. Given this proxy
   // is for APIs only, assume JSON if no content type header is

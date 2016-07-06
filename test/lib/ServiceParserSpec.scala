@@ -1,5 +1,6 @@
 package lib
 
+import controllers.{ServiceProxy, ServiceProxyImpl}
 import org.scalatest._
 import org.scalatestplus.play._
 import play.api.test._
@@ -7,6 +8,8 @@ import play.api.test.Helpers._
 import scala.io.Source
 
 class ServiceParserSpec extends PlaySpec with OneServerPerSuite {
+
+  private[this] lazy val serviceProxyFactory = play.api.Play.current.injector.instanceOf[ServiceProxy.Factory]
 
   "empty" in {
     ServiceParser.parse("   ") must be(Left(Seq("Nothing to parse")))
@@ -86,6 +89,11 @@ services:
           r.method must be(method)
           r.path must be(path)
         }
+
+        // make sure all services have a defined execution context
+        config.services.filter { svc =>
+          serviceProxyFactory(svc).asInstanceOf[ServiceProxyImpl].executionContextName == ServiceProxy.DefaultContextName
+        }.map(_.name) must be(Nil)
       }
     }
   }

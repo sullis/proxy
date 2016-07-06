@@ -78,9 +78,9 @@ services:
           svc.host must be(s"https://$name.api.flow.io")
         }
 
-        val s = Services(config)
+        val index = Index(config)
         Seq(("GET", "/users"), ("GET", "/organizations"), ("GET", "/:organization/catalog")).foreach { case (method, path) =>
-          val r = s.resolve(method, path).getOrElse {
+          val r = index.resolve(method, path).getOrElse {
             sys.error(s"Failed to resolve path[$path]")
           }
           r.method must be(method)
@@ -110,9 +110,9 @@ services:
           svc.host must be(host)
         }
 
-        val s = Services(config)
+        val index = Index(config)
         Seq(("GET", "/users"), ("GET", "/organizations"), ("GET", "/:organization/catalog")).foreach { case (method, path) =>
-          val r = s.resolve(method, path).getOrElse {
+          val r = index.resolve(method, path).getOrElse {
             sys.error(s"Failed to resolve path[$path]")
           }
           r.method must be(method)

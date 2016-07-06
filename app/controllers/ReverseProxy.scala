@@ -7,7 +7,7 @@ import io.flow.token.v0.{Client => TokenClient}
 import io.flow.organization.v0.{Client => OrganizationClient}
 import io.flow.token.v0.models.TokenReference
 import javax.inject.{Inject, Singleton}
-import lib.{Authorization, AuthorizationParser, Config, InternalRoute, Service, Services, ProxyConfigFetcher}
+import lib.{Authorization, AuthorizationParser, Config, Index, InternalRoute, Service, ProxyConfigFetcher}
 import play.api.Logger
 import play.api.libs.json.Json
 import play.api.mvc._
@@ -34,19 +34,19 @@ class ReverseProxy @Inject () (
 
   private[this] implicit val ec = system.dispatchers.lookup("reverse-proxy-context")
 
-  val services: Services = proxyConfigFetcher.current()
+  val index: Index = proxyConfigFetcher.current()
 
   private[this] val proxies: Map[String, ServiceProxy] = {
-    Logger.info(s"ReverseProxy loading config version: ${services.config.version}")
+    Logger.info(s"ReverseProxy loading config version: ${index.config.version}")
     Map(
-      services.all.map { s =>
+      index.config.services.map { s =>
         (s.name -> serviceProxyFactory(s))
       }: _*
     )
   }
 
   def handle = Action.async(parse.raw) { request: Request[RawBuffer] =>
-    services.resolve(request.method, request.path) match {
+    index.resolve(request.method, request.path) match {
       case None => Future {
         Logger.info(s"Unrecognized path[${request.path}] - returning 404")
         NotFound

@@ -31,7 +31,7 @@ class ServiceSpec extends PlaySpec with OneServerPerSuite {
       )
     )
 
-    val s = Services(
+    val s = Index(
       ProxyConfig(
         version = "0.0.1",
         services = services

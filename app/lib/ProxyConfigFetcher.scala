@@ -11,7 +11,7 @@ import scala.io.Source
   * periodically.
   * 
   * When downloading the configuration, we load it into an instance of
-  * the Services class to pre-build the data needed to resolve paths.
+  * the Index class to pre-build the data needed to resolve paths.
   */
 @Singleton
 class ProxyConfigFetcher @Inject() (
@@ -28,24 +28,24 @@ class ProxyConfigFetcher @Inject() (
     ServiceParser.parse(contents)
   }
 
-  private[this] def refresh(): Option[Services] = {
+  private[this] def refresh(): Option[Index] = {
     load(Uri) match {
       case Left(errors) => {
         Logger.error(s"Failed to load proxy configuration from Uri[$Uri]: $errors")
         None
       }
       case Right(cfg) => {
-        Option(Services(cfg))
+        Option(Index(cfg))
       }
     }
   }
 
-  private[this] var lastLoad: Services = refresh().getOrElse {
-    Services(
+  private[this] var lastLoad: Index = refresh().getOrElse {
+    Index(
       ProxyConfig(version = "0.0.0", services = Nil)
     )
   }
 
-  def current(): Services = lastLoad
+  def current(): Index = lastLoad
 
 }

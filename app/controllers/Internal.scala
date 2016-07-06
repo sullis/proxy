@@ -15,7 +15,7 @@ class Internal @Inject() (
   )
 
   def getHealthcheck() = Action { request =>
-    reverseProxy.services.all.toList match {
+    reverseProxy.index.config.services.toList match {
       case Nil => {
         UnprocessableEntity(
           Json.toJson(
@@ -33,8 +33,8 @@ class Internal @Inject() (
   def getConfig() = Action { request =>
     Ok(
       Json.obj(
-        "version" -> reverseProxy.services.config.version,
-        "services" -> reverseProxy.services.all.map { service =>
+        "version" -> reverseProxy.index.config.version,
+        "services" -> reverseProxy.index.config.services.map { service =>
           Json.obj(
             "name" -> service.name,
             "host" -> service.host,

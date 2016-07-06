@@ -8,17 +8,15 @@ API Proxy server that is hosted at https://api.flow.io
 
   - Resolves an incoming path to a backend application (e.g. /users =>  'user' application)
   - Authorizes the API token if present via the Authorization header (basic auth)
-  - If the path contains an :organization prefix, verifies that the user identified
-    by the API token has access to the organization (i.e. a membership record exists
-    between the user and organization). This also verifies that the organization
-    prefix is valid.
+  - Authorizes the Bearer token if present (JWT)
+  - If the path contains an :organization prefix, verifies that the user is a member of
+    said org. This also verifies that the organization prefix is valid.
+  - Inject X-Flow-Auth header containing all of the data verified, including user id,
+    organization and membership role when checked
+  - Implements optional configuration of independent thread pools for each backend
+    service (catalog service has one thread pool)
 
 ## Future features:
-
-  - place information from token service, organization service into
-    the request headers, secure in some way (JWT ?). This way the
-    application servers themselves can skip the call to token service,
-    trusting the information in the headers.
 
   - Handles private vs. public paths
 

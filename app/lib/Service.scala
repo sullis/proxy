@@ -30,7 +30,7 @@ class ServicesConfig @Inject() (
   /**
     * Loads service definitions from the specified URI
     */
-  def load(uri: String): Either[Seq[String], Seq[Service]] = {
+  def load(uri: String): Either[Seq[String], ProxyConfig] = {
     val contents = Source.fromURL(uri).mkString
     ServiceParser.parse(contents)
   }
@@ -41,21 +41,25 @@ class ServicesConfig @Inject() (
         Logger.error(s"Failed to load proxy configuration from Uri[$Uri]: $errors")
         None
       }
-      case Right(all) => {
-        Option(Services(all))
+      case Right(cfg) => {
+        Option(Services(cfg))
       }
     }
   }
 
   private[this] var lastLoad: Services = refresh().getOrElse {
-    Services(Nil)
+    Services(
+      ProxyConfig(version = "0.0.0", services = Nil)
+    )
   }
 
   def current(): Services = lastLoad
 
 }
 
-case class Services(all: Seq[Service]) {
+case class Services(config: ProxyConfig) {
+
+  val all: Seq[Service] = config.services
 
   /**
     * This is a map from path to service allowing us to quickly identify

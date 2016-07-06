@@ -14,13 +14,18 @@ class ServiceParserSpec extends PlaySpec with OneServerPerSuite {
 
   "single service w/ no operations" in {
     val spec = """
-test:
-  host: https://test.api.flow.io
+version: 0.0.1
+services:
+  test:
+    host: https://test.api.flow.io
 """
     ServiceParser.parse(spec) must be(
       Right(
-        Seq(
-          Service("test", "https://test.api.flow.io", routes = Nil)
+        ProxyConfig(
+          version = "0.0.1",
+          services = Seq(
+            Service("test", "https://test.api.flow.io", routes = Nil)
+          )
         )
       )
     )
@@ -28,23 +33,28 @@ test:
 
   "single service w/ operations" in {
     val spec = """
-user:
-  host: https://user.api.flow.io
-  operations:
-    - GET /users
-    - POST /users
-    - GET /users/:id
+version: 1.2.3
+services:
+  user:
+    host: https://user.api.flow.io
+    operations:
+      - GET /users
+      - POST /users
+      - GET /users/:id
 """
     ServiceParser.parse(spec) must be(
       Right(
-        Seq(
-          Service(
-            "user",
-            "https://user.api.flow.io",
-            routes = Seq(
-              Route("GET", "/users"),
-              Route("POST", "/users"),
-              Route("GET", "/users/:id")
+        ProxyConfig(
+          version = "1.2.3",
+          services = Seq(
+            Service(
+              "user",
+              "https://user.api.flow.io",
+              routes = Seq(
+                Route("GET", "/users"),
+                Route("POST", "/users"),
+                Route("GET", "/users/:id")
+              )
             )
           )
         )
@@ -60,14 +70,47 @@ user:
         sys.error(s"Failed to parse config at URI[$uri]: $errors")
       }
 
-      case Right(services) => {
+      case Right(config) => {
         Seq("user", "organization", "catalog").foreach { name =>
-          services.find(_.name == "user").getOrElse {
+          val svc = config.services.find(_.name == name).getOrElse {
             sys.error(s"Failed to find service[$name]")
           }
+          svc.host must be(s"https://$name.api.flow.io")
         }
 
-        val s = Services(services)
+        val s = Services(config)
+        Seq(("GET", "/users"), ("GET", "/organizations"), ("GET", "/:organization/catalog")).foreach { case (method, path) =>
+          val r = s.resolve(method, path).getOrElse {
+            sys.error(s"Failed to resolve path[$path]")
+          }
+          r.method must be(method)
+          r.path must be(path)
+        }
+      }
+    }
+  }
+
+  "latest development config" in {
+    val uri = "https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/development.config"
+    val contents = Source.fromURL(uri).mkString
+    ServiceParser.parse(contents) match {
+      case Left(errors) => {
+        sys.error(s"Failed to parse config at URI[$uri]: $errors")
+      }
+
+      case Right(config) => {
+        Map(
+          "user" -> "http://localhost:6021",
+          "organization" -> "http://localhost:6081",
+          "catalog" -> "http://localhost:6071"
+        ).foreach { case (name, host) =>
+          val svc = config.services.find(_.name == name).getOrElse {
+            sys.error(s"Failed to find service[$name]")
+          }
+          svc.host must be(host)
+        }
+
+        val s = Services(config)
         Seq(("GET", "/users"), ("GET", "/organizations"), ("GET", "/:organization/catalog")).foreach { case (method, path) =>
           val r = s.resolve(method, path).getOrElse {
             sys.error(s"Failed to resolve path[$path]")

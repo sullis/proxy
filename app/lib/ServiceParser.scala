@@ -6,6 +6,11 @@ import play.api.Logger
 import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Try}
 
+case class ProxyConfig(
+  version: String,
+  services: Seq[Service]
+)
+
 /**
   * Parses the contents of the .delta file
   */
@@ -13,7 +18,7 @@ object ServiceParser {
 
   def parse(
     contents: String
-  ): Either[Seq[String], Seq[Service]] = {
+  ): Either[Seq[String], ProxyConfig] = {
     contents.trim match {
       case "" => {
         Left(Seq("Nothing to parse"))
@@ -23,57 +28,70 @@ object ServiceParser {
         val yaml = new Yaml()
 
         Try {
-          val y = Option(yaml.load(contents))
-
-          val all = y match {
+          val all = Option(yaml.load(contents)) match {
             case None => Map[String, Object]()
-            case Some(data) => data.asInstanceOf[java.util.Map[String, Object]].asScala
+            case Some(data) => toMap(data)
           }
 
-          val services: Seq[Service] = all.flatMap {
-            case (name, objJs) => {
-              val obj = toMap(objJs)
-
-              toString(obj.get("host")).map(_.trim).getOrElse("") match {
-                case "" => {
-                  Logger.warn(s"Configuration error for app[$name]: Missing host")
-                  None
-                }
-
-                case host => {
-                  val operations = toStringArray(obj.get("operations"))
-                  Some(
-                    Service(
-                      name = name.trim,
-                      host = host,
-                      routes = operations.flatMap { op =>
-                        op.split("\\s").toList match {
-                          case method :: path :: Nil => {
-                            Some(
-                              Route(
-                                method = method,
-                                path = path
-                              )
-                            )
-                          }
-                          case other => {
-                            Logger.warn(s"Configuration error for app[$name]: Invalid operation[$op]")
-                            None
-                          }
-                        }
-                      }
-                    )
-                  )
-                }
-              }
+          toString(all.get("version")) match {
+            case None => {
+              Left(Seq("Missing version"))
             }
-          }.toSeq
 
-          services
+            case Some(version) => {
+              val serviceDefinitions = toMap(all.get("services").getOrElse(Nil))
 
+              val services: Seq[Service] = serviceDefinitions.flatMap {
+                case (name, objJs) => {
+                  val obj = toMap(objJs)
+
+                  toString(obj.get("host")).map(_.trim).getOrElse("") match {
+                    case "" => {
+                      Logger.warn(s"Configuration error for app[$name]: Missing host")
+                      None
+                    }
+
+                    case host => {
+                      val operations = toStringArray(obj.get("operations"))
+                      Some(
+                        Service(
+                          name = name.trim,
+                          host = host,
+                          routes = operations.flatMap { op =>
+                            op.split("\\s").toList match {
+                              case method :: path :: Nil => {
+                                Some(
+                                  Route(
+                                    method = method,
+                                    path = path
+                                  )
+                                )
+                              }
+                              case other => {
+                                Logger.warn(s"Configuration error for app[$name]: Invalid operation[$op]")
+                                None
+                              }
+                            }
+                          }
+                        )
+                      )
+                    }
+                  }
+                }
+              }.toSeq
+
+              Right(
+                ProxyConfig(
+                  version = version,
+                  services = services
+                )
+              )
+            }
+
+          }
         } match {
-          case Success(services) => {
-            Right(services)
+          case Success(result) => {
+            result
           }
 
           case Failure(ex) => {

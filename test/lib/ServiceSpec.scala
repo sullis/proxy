@@ -31,7 +31,12 @@ class ServiceSpec extends PlaySpec with OneServerPerSuite {
       )
     )
 
-    val s = Services(services)
+    val s = Services(
+      ProxyConfig(
+        version = "0.0.1",
+        services = services
+      )
+    )
 
     // Undefined
     s.resolve("GET", "") must be(None)

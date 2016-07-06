@@ -93,7 +93,12 @@ services:
         // make sure all services have a defined execution context
         config.services.filter { svc =>
           serviceProxyFactory(svc).asInstanceOf[ServiceProxyImpl].executionContextName == ServiceProxy.DefaultContextName
-        }.map(_.name) must be(Nil)
+        }.map(_.name).toList match {
+          case Nil => {}
+          case names => {
+            sys.error("All services must have their own execution context. Please update conf/base.conf to add contexts named: " + names.map { n => s"$n-context" }.sorted.mkString(", "))
+          }
+        }
       }
     }
   }

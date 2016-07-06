@@ -37,6 +37,7 @@ class ReverseProxy @Inject () (
   val services: Services = proxyConfigFetcher.current()
 
   private[this] val proxies: Map[String, ServiceProxy] = {
+    Logger.info(s"ReverseProxy loading config version: ${services.config.version}")
     Map(
       services.all.map { s =>
         (s.name -> serviceProxyFactory(s))

@@ -51,8 +51,21 @@ class ReverseProxy @Inject () (
   def handle = Action.async(parse.raw) { request: Request[RawBuffer] =>
     index.resolve(request.method, request.path) match {
       case None => Future {
-        Logger.info(s"Unrecognized path[${request.path}] - returning 404")
-        NotFound
+        val host: Option[String] = request.headers.get("host")
+        host.flatMap { h =>
+          println(s"index.resolveByHost($h, ${request.method}, ${request.path})")
+          index.resolveByHost(h, request.method, request.path)
+        } match {
+          case Some(internalRoute) => {
+            Logger.info(s" - Host header resolved with internalRoute: $internalRoute")
+            NotFound
+          }
+
+          case None => {
+            Logger.info(s"Unrecognized path[${request.path}] - returning 404")
+            NotFound
+          }
+        }
       }
 
       case Some(internalRoute) => {

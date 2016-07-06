@@ -90,7 +90,7 @@ class ServiceProxyImpl @Inject () (
     role: Option[String]
   ) = {
     val requestId = UUID.randomUUID.toString()
-    Logger.info(s"[${service.name}] ${request.method} ${service.host}${request.path} userId[${userId.getOrElse("none")}] organization[${organization.getOrElse("none")}] role[${role.getOrElse("none")}] requestId[$requestId]")
+    Logger.info(s"[${service.name}] ${request.method} ${request.path} to ${service.host} userId[${userId.getOrElse("none")}] organization[${organization.getOrElse("none")}] role[${role.getOrElse("none")}] requestId[$requestId]")
 
     val finalHeaders = proxyHeaders(
       request.headers,

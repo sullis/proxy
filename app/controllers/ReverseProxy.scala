@@ -8,7 +8,7 @@ import io.flow.organization.v0.{Client => OrganizationClient}
 import io.flow.organization.v0.models.Membership
 import io.flow.token.v0.models.TokenReference
 import javax.inject.{Inject, Singleton}
-import lib.{Authorization, AuthorizationParser, Config, Constants, Index, InternalRoute, FlowAuth, Service, ProxyConfigFetcher}
+import lib.{Authorization, AuthorizationParser, Config, Constants, Index, InternalRoute, FlowAuth, Route, Service, ProxyConfigFetcher}
 import play.api.Logger
 import play.api.libs.json.Json
 import play.api.mvc._
@@ -29,7 +29,7 @@ class ReverseProxy @Inject () (
   val index: Index = proxyConfigFetcher.current()
 
   private[this] val organizationClient = {
-    val svc = index.config.services.find(_.name == "organization").getOrElse {
+    val svc = findServiceByName("organization").getOrElse {
       sys.error("There is no service named 'organization' in the current config: " + config)
     }
     Logger.info(s"Creating OrganizationClient w/ baseUrl[${svc.host}]")
@@ -51,48 +51,139 @@ class ReverseProxy @Inject () (
   }
 
   def handle = Action.async(parse.raw) { request: Request[RawBuffer] =>
-    index.resolve(request.method, request.path) match {
+    authorizationParser.parse(request.headers.get("Authorization")) match {
+      case Authorization.NoCredentials => {
+        proxyPostAuth(request, userId = None)
+      }
+
+      case Authorization.Unrecognized => Future {
+        unauthorized(s"Authorization header value must start with one of: " + Authorization.Unrecognized.valid.mkString(", "))
+      }
+
+      case Authorization.InvalidApiToken => Future {
+        unauthorized(s"API Token is not valid")
+      }
+
+      case Authorization.InvalidJwt => Future {
+        unauthorized(s"JWT Token is not valid")
+      }
+
+      case Authorization.Token(token) => {
+        resolveToken(token).flatMap {
+          case None => Future {
+            unauthorized(s"API Token is not valid")
+          }
+          case Some(ref) => {
+            proxyPostAuth(request, userId = Some(ref.user.id))
+          }
+        }
+      }
+
+      case Authorization.User(userId) => {
+        proxyPostAuth(request, userId = Some(userId))
+      }
+    }
+  }
+
+  private[this] def proxyPostAuth(request: Request[RawBuffer], userId: Option[String]): Future[Result] = {
+    resolve(request.method, request.path, request.headers.get(Constants.Headers.FlowService)) match {
       case None => Future {
         Logger.info(s"Unrecognized path[${request.path}] - returning 404")
         NotFound
       }
 
       case Some(internalRoute) => {
-        authorizationParser.parse(request.headers.get("Authorization")) match {
-          case Authorization.NoCredentials => {
-            proxyWithOrg(request, internalRoute, userId = None)
+        internalRoute.organization(request.path) match {
+          case None  => {
+            lookup(internalRoute.service).proxy(
+              request,
+              userId = userId,
+              organization = None,
+              role = None
+            )
           }
 
-          case Authorization.Unrecognized => Future {
-            unauthorized(s"Authorization header value must start with one of: " + Authorization.Unrecognized.valid.mkString(", "))
-          }
-
-          case Authorization.InvalidApiToken => Future {
-            unauthorized(s"API Token is not valid")
-          }
-
-          case Authorization.InvalidJwt => Future {
-            unauthorized(s"JWT Token is not valid")
-          }
-
-          case Authorization.Token(token) => {
-            resolveToken(token).flatMap {
+          case Some(org) => {
+            userId match {
               case None => Future {
-                unauthorized(s"API Token is not valid")
+                unauthorized("You must set a valid Authorization header")
               }
-              case Some(ref) => {
-                proxyWithOrg(request, internalRoute, userId = Some(ref.user.id))
+
+              case Some(uid) => {
+                resolveMembership(uid, org).flatMap {
+                  case None => Future {
+                    unauthorized(s"Not authorized to access $org or the organization does not exist")
+                  }
+
+                  case Some(membership) => {
+                    lookup(internalRoute.service).proxy(
+                      request,
+                      userId = Some(uid),
+                      organization = Some(org),
+                      role = Some(membership.role.toString)
+                    )
+                  }
+                }
               }
             }
-          }
-
-          case Authorization.User(userId) => {
-            proxyWithOrg(request, internalRoute, userId = Some(userId))
           }
         }
       }
     }
   }
+
+  /**
+    * Resolves the incoming method and path to a specific interanl route.
+    * 
+    * @param serviceNameOverride If specified, we use this service name.
+    *        Otherwise we resolve by path.
+    */
+  private[this] def resolve(method: String, path: String, serviceNameOverride: Option[String]): Option[InternalRoute] = {
+    serviceNameOverride.flatMap(findServiceByName(_)) match {
+      case None => {
+        index.resolve(method, path)
+      }
+
+      case Some(svc) => {
+        Some(
+          InternalRoute(
+            route = Route(
+              method = method,
+              path = path
+            ),
+            service = svc
+          )
+        )
+      }
+    }
+  }
+  
+  private[this] def lookup(service: Service): ServiceProxy = {
+    proxies.get(service.name).getOrElse {
+      sys.error(s"Service[${service.name}] no proxy found")
+    }
+  }
+
+  private[this] def unauthorized(message: String) = {
+    NotFound(errorJson("authorization_failed", message))
+  }
+
+  private[this] def notFound(message: String) = {
+    NotFound(errorJson("not_found", message))
+  }
+
+  private[this] def errorJson(key: String, message: String) = {
+    Json.toJson(
+      Seq(
+        Error(key, message)
+      )
+    )
+  }
+
+  private[this] def findServiceByName(name: String): Option[Service] = {
+    index.config.services.find(_.name == name)
+  }
+
 
   /**
     * Queries token service to check if the specified token is a known
@@ -136,59 +227,5 @@ class ReverseProxy @Inject () (
         sys.error(s"Could not communicate with token service at[$tokenServiceUrl]: $ex")
       }
     }
-  }
-
-  private[this] def proxyWithOrg(request: Request[RawBuffer], internalRoute: InternalRoute, userId: Option[String]): Future[Result] = {
-    internalRoute.organization(request.path) match {
-      case None  => {
-        lookup(internalRoute.service).proxy(
-          request,
-          userId = userId,
-          organization = None,
-          role = None
-        )
-      }
-
-      case Some(org) => {
-        userId match {
-          case None => Future {
-            unauthorized("You must set a valid Authorization header")
-          }
-
-          case Some(uid) => {
-            resolveMembership(uid, org).flatMap {
-              case None => Future {
-                unauthorized(s"Not authorized to access $org or the organization does not exist")
-              }
-
-              case Some(membership) => {
-                lookup(internalRoute.service).proxy(
-                  request,
-                  userId = Some(uid),
-                  organization = Some(org),
-                  role = Some(membership.role.toString)
-                )
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  private[this] def lookup(service: Service): ServiceProxy = {
-    proxies.get(service.name).getOrElse {
-      sys.error(s"Service[${service.name}] no proxy found")
-    }
-  }
-
-  private[this] def unauthorized(message: String) = {
-    Unauthorized(
-      Json.toJson(
-        Seq(
-          Error("authorization_failed", message)
-        )
-      )
-    )
   }
 }

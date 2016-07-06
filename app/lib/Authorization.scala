@@ -55,8 +55,6 @@ class AuthorizationParser @Inject() (
   config: Config
 ) {
 
-  private[this] lazy val jwtSalt = config.requiredString("JWT_SALT")
-
   /**
     * Parses the value fro the authorization header, handling case
     * where no authorization was present
@@ -93,7 +91,7 @@ class AuthorizationParser @Inject() (
     }
   }
 
-  private[this] def jwtIsValid(token: String): Boolean = JsonWebToken.validate(token, jwtSalt)
+  private[this] def jwtIsValid(token: String): Boolean = JsonWebToken.validate(token, config.jwtSalt)
 
   private[this] def parseJwtToken(claimsSet: JwtClaimsSetJValue): Authorization =
     claimsSet.asSimpleMap.toOption match {

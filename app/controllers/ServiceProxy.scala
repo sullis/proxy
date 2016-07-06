@@ -1,6 +1,5 @@
 package controllers
 
-import authentikat.jwt.{JwtClaimsSet, JwtHeader, JsonWebToken}
 import akka.actor.ActorSystem
 import com.google.inject.AbstractModule
 import com.google.inject.assistedinject.{Assisted, FactoryModuleBuilder}
@@ -16,7 +15,7 @@ import play.api.mvc._
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
 import play.api.http.HttpEntity
-import lib.{Config, Service}
+import lib.{Constants, FlowAuth, Service}
 
 /**
   * Service Proxy is responsible for proxying all requests to a given
@@ -56,11 +55,9 @@ class ServiceProxyModule extends AbstractModule {
 class ServiceProxyImpl @Inject () (
   system: ActorSystem,
   ws: WSClient,
-  config: Config,
+  flowAuth: FlowAuth,
   @Assisted service: Service
 ) extends ServiceProxy with Controller{
-
-  private[this] lazy val jwtSalt = config.requiredString("jwt.salt")
 
   private[this] implicit val (ec, name) = {
     val name = s"${service.name}-context"
@@ -99,8 +96,8 @@ class ServiceProxyImpl @Inject () (
       request.headers,
       (
         userId.map { uid =>
-          "X-Flow-Auth" -> jwtValue(uid, organization = organization, role = role)
-        } ++ Seq("X-Flow-Proxy-Service" -> service.name)
+          Constants.Headers.FlowAuth -> flowAuth.jwt(userId = uid, organization = organization, role = role)
+        } ++ Seq(Constants.Headers.FlowService -> service.name)
       )
     )
 
@@ -165,21 +162,4 @@ class ServiceProxyImpl @Inject () (
       case Failure(_) => None
     }
   }
-
-  private[this] def jwtValue(
-    userId: String,
-    organization: Option[String],
-    role: Option[String]
-  ): String = {
-    val header = JwtHeader("HS256")
-    val claimsSet = JwtClaimsSet(
-      Map(
-        "user_id" -> Some(userId),
-        "organization" -> organization,
-        "role" -> role
-      ).flatMap { case (k, v) => v.map { o => (k -> o)} }
-    )
-    JsonWebToken(header, claimsSet, jwtSalt)
-  }
-  
 }

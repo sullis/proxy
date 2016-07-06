@@ -5,9 +5,10 @@ import io.flow.common.v0.models.Error
 import io.flow.common.v0.models.json._
 import io.flow.token.v0.{Client => TokenClient}
 import io.flow.organization.v0.{Client => OrganizationClient}
+import io.flow.organization.v0.models.Membership
 import io.flow.token.v0.models.TokenReference
 import javax.inject.{Inject, Singleton}
-import lib.{Authorization, AuthorizationParser, Config, Index, InternalRoute, Service, ProxyConfigFetcher}
+import lib.{Authorization, AuthorizationParser, Config, Constants, Index, InternalRoute, FlowAuth, Service, ProxyConfigFetcher}
 import play.api.Logger
 import play.api.libs.json.Json
 import play.api.mvc._
@@ -20,6 +21,7 @@ class ReverseProxy @Inject () (
   system: ActorSystem,
   authorizationParser: AuthorizationParser,
   config: Config,
+  flowAuth: FlowAuth,
   proxyConfigFetcher: ProxyConfigFetcher,
   serviceProxyFactory: ServiceProxy.Factory
 ) extends Controller {
@@ -92,6 +94,10 @@ class ReverseProxy @Inject () (
     }
   }
 
+  /**
+    * Queries token service to check if the specified token is a known
+    * valid token.
+    */
   private[this] def resolveToken(token: String): Future[Option[TokenReference]] = {
     tokenClient.tokens.getByToken(token).map { tokenReference =>
       Some(tokenReference)
@@ -100,6 +106,32 @@ class ReverseProxy @Inject () (
         None
       }
 
+      case ex: Throwable => {
+        sys.error(s"Could not communicate with token service at[$tokenServiceUrl]: $ex")
+      }
+    }
+  }
+
+  /**
+    * Queries organization service to check if the specified user is a
+    * member of the specified organization.
+    */
+  private[this] def resolveMembership(
+    userId: String,
+    organization: String
+  ): Future[Option[Membership]] = {
+    organizationClient.memberships.get(
+      user = Some(userId),
+      organization = Some(organization),
+      limit = 1,
+      requestHeaders = Seq(Constants.Headers.FlowAuth -> flowAuth.jwt(userId, organization = None, role = None))
+    ).map { memberships =>
+      memberships.headOption
+    }.recover {
+      case io.flow.organization.v0.errors.UnitResponse(401) => {
+        Logger.warn(s"User[$userId] was not authorized to GET /memberships")
+        None
+      }
       case ex: Throwable => {
         sys.error(s"Could not communicate with token service at[$tokenServiceUrl]: $ex")
       }
@@ -124,33 +156,18 @@ class ReverseProxy @Inject () (
           }
 
           case Some(uid) => {
-            organizationClient.memberships.get(
-              user = Some(uid),
-              organization = Some(org),
-              limit = 1,
-              requestHeaders = Seq("Authorization" -> request.headers.get("Authorization").getOrElse(""))
-            ).flatMap { memberships =>
-              memberships.headOption match {
-                case None => Future {
-                  unauthorized(s"Not authorized to access $org or the organization does not exist")
-                }
-
-                case Some(membership) => {
-                  lookup(internalRoute.service).proxy(
-                    request,
-                    userId = Some(uid),
-                    organization = Some(org),
-                    role = Some(membership.role.toString)
-                  )
-                }
-              }
-            }.recover {
-              case io.flow.organization.v0.errors.UnitResponse(401) => {
-                unauthorized(s"This API key is either not authorized to access $org or the organization does not exist")
+            resolveMembership(uid, org).flatMap {
+              case None => Future {
+                unauthorized(s"Not authorized to access $org or the organization does not exist")
               }
 
-              case ex: Throwable => {
-                sys.error(s"Could not communicate with token service at[$tokenServiceUrl]: $ex")
+              case Some(membership) => {
+                lookup(internalRoute.service).proxy(
+                  request,
+                  userId = Some(uid),
+                  organization = Some(org),
+                  role = Some(membership.role.toString)
+                )
               }
             }
           }

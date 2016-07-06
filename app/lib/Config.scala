@@ -8,6 +8,8 @@ class Config @Inject() (
   configuration: Configuration
 ) {
 
+  lazy val jwtSalt = requiredString("jwt.salt")
+
   def requiredString(name: String): String = {
     configuration.getString(name).getOrElse {
       sys.error(s"Missing configuration parameter[$name]")

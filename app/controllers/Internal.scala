@@ -1,7 +1,6 @@
 package controllers
 
 import javax.inject.{Inject, Singleton}
-import lib.ServicesConfig
 import play.api._
 import play.api.mvc._
 import play.api.libs.json._
@@ -33,8 +32,9 @@ class Internal @Inject() (
 
   def getConfig() = Action { request =>
     Ok(
-      Json.toJson(
-        reverseProxy.services.all.map { service =>
+      Json.obj(
+        "version" -> reverseProxy.services.config.version,
+        "services" -> reverseProxy.services.all.map { service =>
           Json.obj(
             "name" -> service.name,
             "host" -> service.host,

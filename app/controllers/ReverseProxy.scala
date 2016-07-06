@@ -7,7 +7,7 @@ import io.flow.token.v0.{Client => TokenClient}
 import io.flow.organization.v0.{Client => OrganizationClient}
 import io.flow.token.v0.models.TokenReference
 import javax.inject.{Inject, Singleton}
-import lib.{Authorization, AuthorizationParser, Config, InternalRoute, Service, ServicesConfig}
+import lib.{Authorization, AuthorizationParser, Config, InternalRoute, Service, Services, ProxyConfigFetcher}
 import play.api.Logger
 import play.api.libs.json.Json
 import play.api.mvc._
@@ -20,7 +20,7 @@ class ReverseProxy @Inject () (
   system: ActorSystem,
   authorizationParser: AuthorizationParser,
   config: Config,
-  servicesConfig: ServicesConfig,
+  proxyConfigFetcher: ProxyConfigFetcher,
   serviceProxyFactory: ServiceProxy.Factory
 ) extends Controller {
 
@@ -34,7 +34,7 @@ class ReverseProxy @Inject () (
 
   private[this] implicit val ec = system.dispatchers.lookup("reverse-proxy-context")
 
-  val services = servicesConfig.current()
+  val services: Services = proxyConfigFetcher.current()
 
   private[this] val proxies: Map[String, ServiceProxy] = {
     Map(

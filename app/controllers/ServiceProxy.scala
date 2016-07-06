@@ -149,7 +149,7 @@ class ServiceProxyImpl @Inject () (
         case None => headers.add("Content-Type" -> DefaultContentType)
         case Some(_) => headers
       }
-    )
+    ).remove(Constants.Headers.FlowAuth).remove(Constants.Headers.FlowService)
     additional.foldLeft(all) { case (h, (k, v)) => h.remove(k).add(k -> v) }
   }
 

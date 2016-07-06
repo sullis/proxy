@@ -18,14 +18,4 @@ case class Index(config: ProxyConfig) {
     routes.find(_.matches(method.toUpperCase, path.toLowerCase.trim))
   }
 
-  def resolveByHost(host: String, method: String, path: String): Option[InternalRoute] = {
-    // routes.find(_.matches(method.toUpperCase, path.toLowerCase.trim))
-    config.services.find(_.host == host).map { svc =>
-      InternalRoute(
-        route = Route(method, path),
-        service = svc
-      )
-    }
-  }
-
 }

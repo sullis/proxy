@@ -1,6 +1,6 @@
 package lib
 
-import authentikat.jwt._
+import authentikat.jwt.{JsonWebToken, JwtClaimsSetJValue}
 import javax.inject.{Inject, Singleton}
 import org.apache.commons.codec.binary.Base64
 import play.api.Logger

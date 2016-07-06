@@ -1,5 +1,6 @@
 package controllers
 
+import authentikat.jwt.{JwtClaimsSet, JwtHeader, JsonWebToken}
 import akka.actor.ActorSystem
 import com.google.inject.AbstractModule
 import com.google.inject.assistedinject.{Assisted, FactoryModuleBuilder}
@@ -15,7 +16,7 @@ import play.api.mvc._
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
 import play.api.http.HttpEntity
-import lib.Service
+import lib.{Config, Service}
 
 /**
   * Service Proxy is responsible for proxying all requests to a given
@@ -52,10 +53,12 @@ class ServiceProxyModule extends AbstractModule {
 class ServiceProxyImpl @Inject () (
   system: ActorSystem,
   ws: WSClient,
+  config: Config,
   @Assisted service: Service
 ) extends ServiceProxy with Controller{
 
   private[this] val DefaultContextName = s"default-service-context"
+  private[this] lazy val jwtSalt = config.requiredString("jwt.salt")
 
   implicit val ec = {
     val name = s"${service.name}-context"
@@ -86,17 +89,16 @@ class ServiceProxyImpl @Inject () (
     role: Option[String]
   ) = {
     val requestId = UUID.randomUUID.toString()
-    Logger.info(s"[${service.name}] ${request.method} ${service.host}${request.path} userId[${userId.getOrElse("none")}] organization[${organization.getOrElse("none")}] role[${role.getOrElse("none")}] requestId[$requestId]")
+    //Logger.info(s"[${service.name}] ${request.method} ${service.host}${request.path} userId[${userId.getOrElse("none")}] organization[${organization.getOrElse("none")}] role[${role.getOrElse("none")}] requestId[$requestId]")
 
     val finalHeaders = proxyHeaders(
       request.headers,
-      Seq(
-        "X-Flow-Proxy-Service" -> Some(service.name),
-        "X-Flow-User-Id" -> userId,
-        "X-Flow-Organization" -> organization,
-        "X-Flow-Role" -> role
-      ).flatMap { case (k, v) => v.map { (k, _) } }
-    ).remove("Host")
+      (
+        userId.map { uid =>
+          "X-Flow-Auth" -> jwtValue(uid, organization = organization, role = role)
+        } ++ Seq("X-Flow-Proxy-Service" -> service.name)
+      )
+    )
 
     val req = ws.url(service.host + request.path)
       .withFollowRedirects(false)
@@ -113,7 +115,7 @@ class ServiceProxyImpl @Inject () (
         val contentLength: Option[Long] = response.headers.get("Content-Length").flatMap(_.headOption).flatMap(toLongSafe(_))
 
         val timeToFirstByteMs = System.currentTimeMillis - startMs
-        Logger.info(s"[${service.name}] ${response.status} ${request.method} ${request.path} firstByteMs[$timeToFirstByteMs] requestId[$requestId]")
+        //Logger.info(s"[${service.name}] ${request.method} ${request.path} ${response.status} ${timeToFirstByteMs}msFirstByte requestId[$requestId]")
 
         // If there's a content length, send that, otherwise return the body chunked
         contentLength match {
@@ -140,7 +142,7 @@ class ServiceProxyImpl @Inject () (
     *   - adding a default content-type
     *   - adding all additional headers specified
     */
-  private[this] def proxyHeaders(headers: Headers, additional: Seq[(String, String)]): Headers = {
+  private[this] def proxyHeaders(headers: Headers, additional: Iterable[(String, String)]): Headers = {
     val all = (
       headers.get("Content-Type") match {
         case None => headers.add("Content-Type" -> DefaultContentType)
@@ -160,4 +162,20 @@ class ServiceProxyImpl @Inject () (
     }
   }
 
+  private[this] def jwtValue(
+    userId: String,
+    organization: Option[String],
+    role: Option[String]
+  ): String = {
+    val header = JwtHeader("HS256")
+    val claimsSet = JwtClaimsSet(
+      Map(
+        "user_id" -> Some(userId),
+        "organization" -> organization,
+        "role" -> role
+      ).flatMap { case (k, v) => v.map { o => (k -> o)} }
+    )
+    JsonWebToken(header, claimsSet, jwtSalt)
+  }
+  
 }

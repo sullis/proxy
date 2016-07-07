@@ -36,4 +36,4 @@ lazy val commonSettings: Seq[Setting[_]] = Seq(
   resolvers += "scalaz-bintray" at "https://dl.bintray.com/scalaz/releases",
   resolvers += "Artifactory" at "https://flow.artifactoryonline.com/flow/libs-release/"
 )
-version := "0.0.3"
+version := "0.0.4"

@@ -9,8 +9,6 @@ sealed trait InternalRoute {
   def path: String
   def service: Service
 
-  def matches(method: String, path: String): Boolean 
-
   private[this] val hasOrganization: Boolean = path == "/:organization" || path.startsWith("/:organization/")
 
   /**
@@ -40,11 +38,6 @@ object InternalRoute {
   case class Static(method: String, path: String, service: Service) extends InternalRoute {
     assert(method == method.toUpperCase.trim, s"Method[$method] must be upper case trimmed")
     assert(path == path.toLowerCase.trim, s"path[$path] must be lower case trimmed")
-
-    override def matches(incomingMethod: String, incomingPath: String): Boolean = {
-      method == incomingMethod && path == incomingPath
-    }
-
   }
 
   /**
@@ -72,7 +65,7 @@ object InternalRoute {
         "$"
     ).r
 
-    override def matches(incomingMethod: String, incomingPath: String): Boolean = {
+    def matches(incomingMethod: String, incomingPath: String): Boolean = {
       method == incomingMethod match {
         case true => incomingPath match {
           case pattern() => true

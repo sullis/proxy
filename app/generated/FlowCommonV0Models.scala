@@ -125,6 +125,16 @@ package io.flow.common.v0.models {
   )
 
   /**
+   * Amount-currency paid for a basic price to be used in model forms, before a price
+   * label is created. Label in the main price model is created by the implementing
+   * api.
+   */
+  case class PriceForm(
+    amount: Double,
+    currency: String
+  )
+
+  /**
    * Represents operating calendar and holidays of a location
    */
   case class Schedule(
@@ -1560,6 +1570,28 @@ package io.flow.common.v0.models {
       new play.api.libs.json.Writes[io.flow.common.v0.models.Price] {
         def writes(obj: io.flow.common.v0.models.Price) = {
           jsObjectPrice(obj)
+        }
+      }
+    }
+
+    implicit def jsonReadsCommonPriceForm: play.api.libs.json.Reads[PriceForm] = {
+      (
+        (__ \ "amount").read[Double] and
+        (__ \ "currency").read[String]
+      )(PriceForm.apply _)
+    }
+
+    def jsObjectPriceForm(obj: io.flow.common.v0.models.PriceForm) = {
+      play.api.libs.json.Json.obj(
+        "amount" -> play.api.libs.json.JsNumber(obj.amount),
+        "currency" -> play.api.libs.json.JsString(obj.currency)
+      )
+    }
+
+    implicit def jsonWritesCommonPriceForm: play.api.libs.json.Writes[PriceForm] = {
+      new play.api.libs.json.Writes[io.flow.common.v0.models.PriceForm] {
+        def writes(obj: io.flow.common.v0.models.PriceForm) = {
+          jsObjectPriceForm(obj)
         }
       }
     }

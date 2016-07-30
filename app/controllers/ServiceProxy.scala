@@ -49,30 +49,31 @@ object ServiceProxy {
     def apply(definition: ServiceProxyDefinition): ServiceProxy
   }
 
-/**
- *  Maps a query string that may contain multiple values per parameter
- *  to a sequence of query parameters.
- *
- *  @todo Add example query string
- *  @example
- *  {{{
- *    query(
- *      Map[String, Seq[String]](
- *        "foo" -> Seq("a", "b"),
- *        "foo2" -> Seq("c")
- *      )
- *    ) == Seq(
- *      ("foo", "a"),
- *      ("foo", "b"),
- *      ("foo2", "c")
- *    )
- *  }}}
- *  
- *  @param incoming A map of query parameter keys to sequences of their values.
- *  @return A sequence of keys, each paired with exactly one value.
- */
-def query(incoming: Map[String, Seq[String]]): Seq[(String, String)] = {
-  incoming.map { case (k, vs) => vs.map(k -> _) }.flatten.toSeq
+  /**
+    *  Maps a query string that may contain multiple values per parameter
+    *  to a sequence of query parameters.
+    *
+    *  @todo Add example query string
+    *  @example
+    *  {{{
+    *    query(
+    *      Map[String, Seq[String]](
+    *        "foo" -> Seq("a", "b"),
+    *        "foo2" -> Seq("c")
+    *      )
+    *    ) == Seq(
+    *      ("foo", "a"),
+    *      ("foo", "b"),
+    *      ("foo2", "c")
+    *    )
+    *  }}}
+    *  
+    *  @param incoming A map of query parameter keys to sequences of their values.
+    *  @return A sequence of keys, each paired with exactly one value.
+    */
+  def query(incoming: Map[String, Seq[String]]): Seq[(String, String)] = {
+    incoming.map { case (k, vs) => vs.map(k -> _) }.flatten.toSeq
+  }
 }
 
 class ServiceProxyModule extends AbstractModule {

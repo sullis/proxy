@@ -7,7 +7,7 @@ import scala.io.Source
 /**
   * Responsible for downloading the configuration from the URL
   * specified by the configuration parameter named
-  * proxy.config.url. Exposes an API to refresh the configuration
+  * proxy.config.uris. Exposes an API to refresh the configuration
   * periodically.
   * 
   * When downloading the configuration, we load it into an instance of
@@ -18,21 +18,27 @@ class ProxyConfigFetcher @Inject() (
   config: Config
 ) {
 
-  private[this] lazy val Uri = config.requiredString("proxy.config.uri")
+  private[this] lazy val Uris: Seq[String] = config.requiredString("proxy.config.uris").split(",").map(_.trim)
 
   /**
     * Loads service definitions from the specified URI
     */
-  def load(uri: String): Either[Seq[String], ProxyConfig] = {
-    Logger.info(s"ProxyConfigFetcher: fetching configuration from uri[$uri]")
+  def load(uris: Seq[String]): Either[Seq[String], ProxyConfig] = {
+    Logger.info(s"ProxyConfigFetcher: fetching configuration from uris[$uris]")
+    val uri = uris.headOption.getOrElse {
+      sys.error("No uris")
+    }
+
+    // TODO: Handle second configuration file
+
     val contents = Source.fromURL(uri).mkString
     ServiceParser.parse(contents)
   }
 
   private[this] def refresh(): Option[Index] = {
-    load(Uri) match {
+    load(Uris) match {
       case Left(errors) => {
-        Logger.error(s"Failed to load proxy configuration from Uri[$Uri]: $errors")
+        Logger.error(s"Failed to load proxy configuration from Uris[$Uris]: $errors")
         None
       }
       case Right(cfg) => {

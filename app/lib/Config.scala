@@ -1,5 +1,6 @@
 package lib
 
+import collection.JavaConverters._
 import javax.inject.{Inject, Singleton}
 import play.api.Configuration
 
@@ -19,6 +20,12 @@ class Config @Inject() (
     configuration.getString(name).getOrElse {
       sys.error(s"Missing configuration parameter[$name]")
     }
+  }
+
+  def requiredList(name: String): Seq[String] = {
+    configuration.getList(name).getOrElse {
+      sys.error(s"Missing configuration parameter[$name]")
+    }.unwrapped.asScala.map(_.toString)
   }
 
   def missing(): Seq[String] = {

@@ -49,16 +49,16 @@ http://localhost:9000/_internal_/config
 
 Running locally:
 
-    PROXY_CONFIG_URI=https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/production.config JWT_SALT=test sbt
+    PROXY_CONFIG_URIS=https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/development.config JWT_SALT=test sbt
 
 Development configuration file:
 
-    PROXY_CONFIG_URI="https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/development.config"
+    PROXY_CONFIG_URIS="https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/development.config"
 
 Workstation configuration file:
 
-    PROXY_CONFIG_URI="https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/workstation.config"
+    PROXY_CONFIG_URIS="https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/workstation.config"
 
 Production configuration file:
 
-    PROXY_CONFIG_URI="https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/production.config"
+    PROXY_CONFIG_URIS="https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/production.config"

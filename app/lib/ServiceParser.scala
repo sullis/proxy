@@ -6,10 +6,24 @@ import play.api.Logger
 import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Try}
 
-case class ProxyConfig(
-  version: String,
-  services: Seq[Service]
+case class ProxyConfigSource(
+  uri: String,
+  version: String
 )
+
+case class ProxyConfig(
+  sources: Seq[ProxyConfigSource],
+  services: Seq[Service]
+) {
+
+  def merge(other: ProxyConfig) = {
+    ProxyConfig(
+      sources = sources ++ other.sources,
+      services = services ++ other.services
+    )
+  }
+
+}
 
 /**
   * Parses the contents of the .delta file
@@ -17,6 +31,7 @@ case class ProxyConfig(
 object ServiceParser {
 
   def parse(
+    sourceUri: String,
     contents: String
   ): Either[Seq[String], ProxyConfig] = {
     contents.trim match {
@@ -82,7 +97,12 @@ object ServiceParser {
 
               Right(
                 ProxyConfig(
-                  version = version,
+                  sources = Seq(
+                    ProxyConfigSource(
+                      uri = sourceUri,
+                      version = version
+                    )
+                  ),
                   services = services
                 )
               )

@@ -21,18 +21,54 @@ class ProxyConfigFetcher @Inject() (
   private[this] lazy val Uris: Seq[String] = config.requiredString("proxy.config.uris").split(",").map(_.trim)
 
   /**
+    * Loads service definitions from the specified URIs
+    */
+  private[this] def load(uris: Seq[String]): Either[Seq[String], ProxyConfig] = {
+    uris.toList match {
+      case Nil => {
+        sys.error("Must have at least one configuration uri")
+      }
+
+      case uri :: rest => {
+        load(uri) match {
+          case Left(errors) => {
+            Left(errors)
+          }
+          case Right(config) => {
+            combine(rest, config)
+          }
+        }
+      }
+    }
+  }
+
+  @scala.annotation.tailrec
+  private[this] def combine(uris: Seq[String], config: ProxyConfig): Either[Seq[String], ProxyConfig] = {
+    uris.toList match {
+      case Nil => {
+        Right(config)
+      }
+
+      case uri :: rest => {
+        load(uri) match {
+          case Left(errors) => {
+            Left(errors)
+          }
+          case Right(newConfig) => {
+            combine(rest, config.merge(newConfig))
+          }
+        }
+      }
+    }
+  }
+  
+  /**
     * Loads service definitions from the specified URI
     */
-  def load(uris: Seq[String]): Either[Seq[String], ProxyConfig] = {
-    Logger.info(s"ProxyConfigFetcher: fetching configuration from uris[$uris]")
-    val uri = uris.headOption.getOrElse {
-      sys.error("No uris")
-    }
-
-    // TODO: Handle second configuration file
-
+  private[this] def load(uri: String): Either[Seq[String], ProxyConfig] = {
+    Logger.info(s"ProxyConfigFetcher: fetching configuration from uri[$uri]")
     val contents = Source.fromURL(uri).mkString
-    ServiceParser.parse(contents)
+    ServiceParser.parse(uri, contents)
   }
 
   private[this] def refresh(): Option[Index] = {
@@ -49,7 +85,10 @@ class ProxyConfigFetcher @Inject() (
 
   private[this] var lastLoad: Index = refresh().getOrElse {
     Index(
-      ProxyConfig(version = "0.0.0", services = Nil)
+      ProxyConfig(
+        sources = Nil,
+        services = Nil
+      )
     )
   }
 

@@ -8,6 +8,11 @@ import scala.io.Source
 
 class IndexSpec extends PlaySpec with OneServerPerSuite {
 
+  val source = ProxyConfigSource(
+    uri = "file:///test",
+    version = "0.0.1"
+  )
+
   "resolves route" in {
     val services = Seq(
       Service(
@@ -34,7 +39,7 @@ class IndexSpec extends PlaySpec with OneServerPerSuite {
 
     val s = Index(
       ProxyConfig(
-        version = "0.0.1",
+        sources = Seq(source),
         services = services
       )
     )
@@ -62,7 +67,7 @@ class IndexSpec extends PlaySpec with OneServerPerSuite {
   "performance measurement" in {
     val uri = "https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/development.config"
     val contents = Source.fromURL(uri).mkString
-    ServiceParser.parse(contents) match {
+    ServiceParser.parse(source.uri, contents) match {
       case Left(errors) => {
         sys.error(s"Failed to parse config at URI[$uri]: $errors")
       }

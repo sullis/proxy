@@ -47,7 +47,7 @@ class ReverseProxy @Inject () (
   private[this] implicit val ec = system.dispatchers.lookup("reverse-proxy-context")
 
   private[this] val proxies: Map[String, ServiceProxy] = {
-    Logger.info(s"ReverseProxy loading config version: ${index.config.version}")
+    Logger.info(s"ReverseProxy loading config sources: ${index.config.sources}")
     Map(
       index.config.services.map { s =>
         (s.host -> serviceProxyFactory(ServiceProxyDefinition(host = s.host, name = s.name)))

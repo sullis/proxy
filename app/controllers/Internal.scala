@@ -47,7 +47,12 @@ class Internal @Inject() (
   def getConfig() = Action { request =>
     Ok(
       Json.obj(
-        "version" -> reverseProxy.index.config.version,
+        "sources" -> reverseProxy.index.config.sources.map { source =>
+          Json.obj(
+            "uri" -> source.uri,
+            "version" -> source.version
+          )
+        },
         "services" -> reverseProxy.index.config.services.map { service =>
           Json.obj(
             "name" -> service.name,

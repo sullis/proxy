@@ -11,8 +11,15 @@ class ServiceParserSpec extends PlaySpec with OneServerPerSuite {
 
   private[this] lazy val serviceProxyFactory = play.api.Play.current.injector.instanceOf[ServiceProxy.Factory]
 
+  val uri = "file:///test"
+
+  val source = ProxyConfigSource(
+    uri = uri,
+    version = "0.0.1"
+  )
+
   "empty" in {
-    ServiceParser.parse("   ") must be(Left(Seq("Nothing to parse")))
+    ServiceParser.parse(uri, "   ") must be(Left(Seq("Nothing to parse")))
   }
 
   "hostHeaderValue" in {
@@ -28,10 +35,10 @@ services:
   test:
     host: https://test.api.flow.io
 """
-    ServiceParser.parse(spec) must be(
+    ServiceParser.parse(uri, spec) must be(
       Right(
         ProxyConfig(
-          version = "0.0.1",
+          sources = Seq(source),
           services = Seq(
             Service("test", "https://test.api.flow.io", routes = Nil)
           )
@@ -51,10 +58,10 @@ services:
       - POST /users
       - GET /users/:id
 """
-    ServiceParser.parse(spec) must be(
+    ServiceParser.parse(uri, spec) must be(
       Right(
         ProxyConfig(
-          version = "1.2.3",
+          sources = Seq(source.copy(version = "1.2.3")),
           services = Seq(
             Service(
               "user",
@@ -74,7 +81,7 @@ services:
   "latest production config" in {
     val uri = "https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/production.config"
     val contents = Source.fromURL(uri).mkString
-    ServiceParser.parse(contents) match {
+    ServiceParser.parse(uri, contents) match {
       case Left(errors) => {
         sys.error(s"Failed to parse config at URI[$uri]: $errors")
       }
@@ -112,7 +119,7 @@ services:
   "latest development config" in {
     val uri = "https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/development.config"
     val contents = Source.fromURL(uri).mkString
-    ServiceParser.parse(contents) match {
+    ServiceParser.parse(uri, contents) match {
       case Left(errors) => {
         sys.error(s"Failed to parse config at URI[$uri]: $errors")
       }

@@ -123,7 +123,7 @@ class ServiceProxyImpl @Inject () (
   ) = {
     Logger.info(s"[${definition.name}] ${request.method} ${request.path} to ${definition.host} requestId[$requestId]")
 
-    val finalHeaders = proxyHeaders(request.headers, auth)
+    val finalHeaders = proxyHeaders(requestId, request.headers, auth)
 
     val req = ws.url(definition.host + request.path)
       .withFollowRedirects(false)
@@ -167,9 +167,10 @@ class ServiceProxyImpl @Inject () (
     *   - removing X-Flow-* headers if they were set
     *   - adding a default content-type
     */
-  private[this] def proxyHeaders(headers: Headers, authData: Option[FlowAuthData]): Headers = {
+  private[this] def proxyHeaders(requestId: String, headers: Headers, authData: Option[FlowAuthData]): Headers = {
     val headersToAdd = Seq(
       Constants.Headers.FlowService -> name,
+      Constants.Headers.FlowRequestId -> requestId,
       Constants.Headers.Host -> definition.hostHeaderValue,
       Constants.Headers.ForwardedHost -> headers.get(Constants.Headers.Host).getOrElse("")
     ) ++ Seq(

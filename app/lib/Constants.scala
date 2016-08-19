@@ -5,13 +5,14 @@ object Constants {
   object Headers {
 
     val FlowAuth = "X-Flow-Auth"
+    val FlowRequestId = "X-Flow-Request-Id"
     val FlowService = "X-Flow-Service"
     val FlowHost = "X-Flow-Host"
 
     val Host = "Host"
     val ForwardedHost = "X-Forwarded-Host"
 
-    val namesToRemove = Seq(FlowAuth, FlowService, FlowHost, Host)
+    val namesToRemove = Seq(FlowAuth, FlowRequestId, FlowService, FlowHost, Host)
 
   }
 

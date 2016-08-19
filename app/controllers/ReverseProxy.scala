@@ -166,7 +166,7 @@ class ReverseProxy @Inject () (
       case true => Future {
         index.resolve(method, path) match {
           case None => {
-            Logger.info(s"Unrecognized path[$path] - returning 404")
+            Logger.info(s"Unrecognized URL $method $path - returning 404")
             Left(NotFound)
           }
 

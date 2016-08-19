@@ -4,7 +4,6 @@ import akka.actor.ActorSystem
 import com.google.inject.AbstractModule
 import com.google.inject.assistedinject.{Assisted, FactoryModuleBuilder}
 import java.net.URI
-import java.util.UUID
 import java.util.concurrent.Executors
 import javax.inject.Inject
 import play.api.Logger
@@ -35,6 +34,7 @@ case class ServiceProxyDefinition(
 trait ServiceProxy {
 
   def proxy(
+    requestId: String,
     request: Request[RawBuffer],
     auth: Option[FlowAuthData]
   ): Future[play.api.mvc.Result]
@@ -117,10 +117,10 @@ class ServiceProxyImpl @Inject () (
   private[this] val DefaultContentType = "application/json"
 
   override final def proxy(
+    requestId: String,
     request: Request[RawBuffer],
     auth: Option[FlowAuthData]
   ) = {
-    val requestId = UUID.randomUUID.toString()
     Logger.info(s"[${definition.name}] ${request.method} ${request.path} to ${definition.host} requestId[$requestId]")
 
     val finalHeaders = proxyHeaders(request.headers, auth)

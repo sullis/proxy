@@ -11,7 +11,8 @@ object FlowAuthData {
   /**
    * Creates a flow auth data object with only the user id
    */
-  def user(userId: String) = FlowAuthData(
+  def user(requestId: String, userId: String) = FlowAuthData(
+    requestId = requestId,
     userId = userId,
     organization = None,
     role = None,
@@ -21,7 +22,8 @@ object FlowAuthData {
   /**
    * Creates a flow auth data object for the user and org
    */
-  def org(userId: String, organization: String, orgAuth: OrganizationAuthorization) = FlowAuthData(
+  def org(requestId: String, userId: String, organization: String, orgAuth: OrganizationAuthorization) = FlowAuthData(
+    requestId = requestId,
     userId = userId,
     organization = Some(organization),
     role = Some(orgAuth.role.toString),
@@ -29,7 +31,9 @@ object FlowAuthData {
   )
   
 }
+
 case class FlowAuthData(
+  requestId: String,
   userId: String,
   organization: Option[String],
   role: Option[String],
@@ -40,6 +44,7 @@ case class FlowAuthData(
 
   def toMap(): Map[String, String] = {
     Map(
+      "request_id" -> Some(requestId),
       "user_id" -> Some(userId),
       "created_at" -> Some(dateTime.print(createdAt)),
       "organization" -> organization,

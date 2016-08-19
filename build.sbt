@@ -34,4 +34,4 @@ lazy val commonSettings: Seq[Setting[_]] = Seq(
   resolvers += "Artifactory" at "https://flow.artifactoryonline.com/flow/libs-release/"
 )
 
-version := "0.0.19"
+version := "0.0.20"

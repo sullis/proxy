@@ -60,7 +60,7 @@ class ReverseProxy @Inject () (
   
   def handle = Action.async(parse.raw) { request: Request[RawBuffer] =>
     val requestId: String = request.headers.get(Constants.Headers.FlowRequestId).getOrElse {
-      "api-" + UUID.randomUUID.toString
+      "api" + UUID.randomUUID.toString.replaceAll("-", "") // make easy to cut & paste
     }
 
     authorizationParser.parse(request.headers.get("Authorization")) match {
@@ -81,7 +81,7 @@ class ReverseProxy @Inject () (
       }
 
       case Authorization.Token(token) => {
-        resolveToken(token).flatMap {
+        resolveToken(requestId, token).flatMap {
           case None => Future {
             unauthorized(s"API Token is not valid")
           }
@@ -278,8 +278,11 @@ class ReverseProxy @Inject () (
     * Queries token service to check if the specified token is a known
     * valid token.
     */
-  private[this] def resolveToken(token: String): Future[Option[UserReference]] = {
-    tokenClient.tokens.postAuthentications(TokenAuthenticationForm(token = token)).map { t =>
+  private[this] def resolveToken(requestId: String, token: String): Future[Option[UserReference]] = {
+    tokenClient.tokens.postAuthentications(
+      TokenAuthenticationForm(token = token),
+      requestHeaders = requestIdHeader(requestId)
+    ).map { t =>
       Some(t.user)
     }.recover {
       case io.flow.token.v0.errors.UnitResponse(404) => {
@@ -303,7 +306,9 @@ class ReverseProxy @Inject () (
   ): Future[Option[FlowAuthData]] = {
     organizationClient.organizationAuthorizations.getByOrganization(
       organization = organization,
-      requestHeaders = Seq(Constants.Headers.FlowAuth -> flowAuth.jwt(FlowAuthData.user(requestId, userId)))
+      requestHeaders = requestIdHeader(requestId) ++ Seq(
+        Constants.Headers.FlowAuth -> flowAuth.jwt(FlowAuthData.user(requestId, userId))
+      )
     ).map { orgAuth =>
       Some(
         FlowAuthData.org(requestId, userId, organization, orgAuth)
@@ -320,4 +325,7 @@ class ReverseProxy @Inject () (
     }
   }
 
+  private[this] def requestIdHeader(requestId: String) = Seq(
+    Constants.Headers.FlowRequestId -> requestId
+  )
 }

@@ -175,7 +175,8 @@ class ServiceProxyImpl @Inject () (
       Constants.Headers.FlowService -> name,
       Constants.Headers.FlowRequestId -> requestId,
       Constants.Headers.Host -> definition.hostHeaderValue,
-      Constants.Headers.ForwardedHost -> headers.get(Constants.Headers.Host).getOrElse("")
+      Constants.Headers.ForwardedHost -> headers.get(Constants.Headers.Host).getOrElse(""),
+      Constants.Headers.ForwardedOrigin -> headers.get(Constants.Headers.Origin).getOrElse("")
     ) ++ Seq(
       authData.map { data =>
         Constants.Headers.FlowAuth -> flowAuth.jwt(data)

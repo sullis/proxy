@@ -11,8 +11,10 @@ object Constants {
 
     val Host = "Host"
     val ForwardedHost = "X-Forwarded-Host"
+    val Origin = "Origin"
+    val ForwardedOrigin = "X-Forwarded-Origin"
 
-    val namesToRemove = Seq(FlowAuth, FlowRequestId, FlowService, FlowHost, Host)
+    val namesToRemove = Seq(FlowAuth, FlowRequestId, FlowService, FlowHost, Host, Origin)
 
   }
 

@@ -124,9 +124,6 @@ class ServiceProxyImpl @Inject () (
     Logger.info(s"[proxy] ${request.method} ${request.path} to ${definition.name}:${definition.host} requestId $requestId")
 
     val finalHeaders = proxyHeaders(requestId, request.headers, auth)
-    finalHeaders.headers.foreach { h =>
-      Logger.info(s"[proxy] ${request.method} ${request.path} Header $h")
-    }
 
     val req = ws.url(definition.host + request.path)
       .withFollowRedirects(false)

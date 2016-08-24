@@ -148,4 +148,23 @@ services:
     }
   }
 
+  "internal routes" in {
+    val uris = Seq(
+      "https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/development.config",
+      "https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-internal-proxy/development.config"
+    )
+    val proxyConfigFetcher = play.api.Play.current.injector.instanceOf[ProxyConfigFetcher]
+    val config = proxyConfigFetcher.load(uris).right.get
+
+    Seq("currency", "currency-internal").foreach { name =>
+      config.services.find(_.name == name).getOrElse {
+        sys.error(s"Failed to find service[$name]")
+      }
+    }
+
+    val index = Index(config)
+    index.resolve("GET", "/test/currency/rates").get.path must be("/:organization/currency/rates")
+    index.resolve("GET", "/internal/currency/rates/test").get.path must be("/internal/currency/rates/:organization")
+  }
+  
 }

@@ -121,7 +121,7 @@ class ServiceProxyImpl @Inject () (
     request: Request[RawBuffer],
     auth: Option[FlowAuthData]
   ) = {
-    Logger.info(s"[${definition.name}] ${request.method} ${request.path} to ${definition.host} requestId $requestId")
+    Logger.info(s"[proxy] ${request.method} ${request.path} to ${definition.name}:${definition.host} requestId $requestId")
 
     val finalHeaders = proxyHeaders(requestId, request.headers, auth)
 
@@ -140,7 +140,7 @@ class ServiceProxyImpl @Inject () (
         val contentType: Option[String] = response.headers.get("Content-Type").flatMap(_.headOption)
         val contentLength: Option[Long] = response.headers.get("Content-Length").flatMap(_.headOption).flatMap(toLongSafe(_))
 
-        Logger.info(s"[${definition.name}] ${request.method} ${request.path} ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
+        Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.name}:${definition.host} ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
 
         // If there's a content length, send that, otherwise return the body chunked
         contentLength match {

@@ -23,7 +23,7 @@ class ProxyConfigFetcher @Inject() (
   /**
     * Loads service definitions from the specified URIs
     */
-  private[this] def load(uris: Seq[String]): Either[Seq[String], ProxyConfig] = {
+  def load(uris: Seq[String]): Either[Seq[String], ProxyConfig] = {
     uris.toList match {
       case Nil => {
         sys.error("Must have at least one configuration uri")

@@ -18,19 +18,20 @@ class ServiceSpec extends PlaySpec with OneServerPerSuite {
     )
     val host = service.host
 
-    InternalRoute.Static(host, "GET", "/foo").organization("/foo") must be(None)
-    InternalRoute.Static(host, "GET", "/users").organization("/foo") must be(None)
-    InternalRoute.Static(host, "GET", "/organization").organization("/foo") must be(None)
-    InternalRoute.Static(host, "GET", "/organization/catalog").organization("/foo") must be(None)
-    InternalRoute.Static(host, "GET", "/:organization").organization("/flow") must be(Some("flow"))
-    InternalRoute.Static(host, "GET", "/:organization/catalog").organization("/flow/catalog") must be(Some("flow"))
-
-    InternalRoute.Dynamic(host, "GET", "/foo/:id").organization("/foo") must be(None)
-    InternalRoute.Dynamic(host, "GET", "/users/:id").organization("/foo") must be(None)
-    InternalRoute.Dynamic(host, "GET", "/organization/:id").organization("/foo") must be(None)
-    InternalRoute.Dynamic(host, "GET", "/organization/catalog/:id").organization("/foo") must be(None)
-    InternalRoute.Dynamic(host, "GET", "/:organization/:id").organization("/flow/5") must be(Some("flow"))
-    InternalRoute.Dynamic(host, "GET", "/:organization/catalog/:id").organization("/flow/catalog/5") must be(Some("flow"))
+    InternalRoute(Route("GET", "/foo"), host).organization("/foo") must be(None)
+    InternalRoute(Route("GET", "/users"), host).organization("/foo") must be(None)
+    InternalRoute(Route("GET", "/organization"), host).organization("/foo") must be(None)
+    InternalRoute(Route("GET", "/organization/catalog"), host).organization("/foo") must be(None)
+    InternalRoute(Route("GET", "/:organization"), host).organization("/flow") must be(Some("flow"))
+    InternalRoute(Route("GET", "/:organization/catalog"), host).organization("/flow/catalog") must be(Some("flow"))
+    InternalRoute(Route("GET", "/:organization/currency/rates"), host).organization("/test/currency/rates") must be(Some("test"))
+    InternalRoute(Route("GET", "/internal/currency/rates"), host).organization("/internal/currency/rates") must be(Some("flow"))
+    InternalRoute(Route("GET", "/foo/:id"), host).organization("/foo") must be(None)
+    InternalRoute(Route("GET", "/users/:id"), host).organization("/foo") must be(None)
+    InternalRoute(Route("GET", "/organization/:id"), host).organization("/foo") must be(None)
+    InternalRoute(Route("GET", "/organization/catalog/:id"), host).organization("/foo") must be(None)
+    InternalRoute(Route("GET", "/:organization/:id"), host).organization("/flow/5") must be(Some("flow"))
+    InternalRoute(Route("GET", "/:organization/catalog/:id"), host).organization("/flow/catalog/5") must be(Some("flow"))
   }
 
 }

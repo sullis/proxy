@@ -9,7 +9,15 @@ sealed trait InternalRoute {
   def method: String
   def path: String
 
+  private[this] val InternalOrganization = "flow"
+
   private[this] val hasOrganization: Boolean = path == "/:organization" || path.startsWith("/:organization/")
+  private[this] val isInternal: Boolean = path == "/internal" || path.startsWith("/internal/")
+
+  assert(
+    (isInternal && !hasOrganization) || !isInternal,
+    s"Route cannot both be internal and have an organization: $host $method $path"
+  )
 
   /**
     * By naming convention, if the path starts with /:organization, we
@@ -17,12 +25,17 @@ sealed trait InternalRoute {
     * access to that organization.
     */
   def organization(requestPath: String): Option[String] = {
-    hasOrganization match {
-      case false => None
-      case true => {
-        requestPath.split("/").toList match {
-          case empty :: org :: rest => Some(org)
-          case _ => sys.error(s"$method $host$requestPath: Could not extract organization")
+    isInternal match {
+      case true => Some(InternalOrganization)
+      case false => {
+        hasOrganization match {
+          case false => None
+          case true => {
+            requestPath.split("/").toList match {
+              case empty :: org :: rest => Some(org)
+              case _ => sys.error(s"$method $host$requestPath: Could not extract organization")
+            }
+          }
         }
       }
     }

@@ -24,7 +24,7 @@ class ServiceParserSpec extends PlaySpec with OneServerPerSuite {
 
   "hostHeaderValue" in {
     Seq("http://user.api.flow.io", "https://user.api.flow.io").foreach { host =>
-      ServiceProxyDefinition(host, "user").hostHeaderValue must be("user.api.flow.io")
+      ServiceProxyDefinition(host, Seq("user")).hostHeaderValue must be("user.api.flow.io")
     }
   }
 
@@ -105,7 +105,9 @@ services:
 
         // make sure all services have a defined execution context
         config.services.filter { svc =>
-          serviceProxyFactory(ServiceProxyDefinition(svc.host, svc.name)).asInstanceOf[ServiceProxyImpl].executionContextName == ServiceProxy.DefaultContextName
+          serviceProxyFactory(
+            ServiceProxyDefinition(svc.host, Seq(svc.name))
+          ).asInstanceOf[ServiceProxyImpl].executionContextName == ServiceProxy.DefaultContextName
         }.map(_.name).toList match {
           case Nil => {}
           case names => {

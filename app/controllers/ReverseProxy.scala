@@ -49,11 +49,23 @@ class ReverseProxy @Inject () (
 
   private[this] val proxies: Map[String, ServiceProxy] = {
     Logger.info(s"ReverseProxy loading config sources: ${index.config.sources}")
-    Map(
-      index.config.services.map { s =>
-        (s.host -> serviceProxyFactory(ServiceProxyDefinition(host = s.host, name = s.name)))
-      }: _*
-    )
+    val all = scala.collection.mutable.Map[String, ServiceProxy]()
+    index.config.services.map { s =>
+      all.remove(s.host) match {
+        case None => {
+          all += (s.host -> serviceProxyFactory(ServiceProxyDefinition(host = s.host, names = Seq(s.name))))
+        }
+        case Some(existing) => {
+          all += (
+            s.host -> serviceProxyFactory(
+              existing.definition.copy(
+                names = existing.definition.names ++ Seq(s.name))
+            )
+          )
+        }
+      }
+    }
+    all.toMap
   }
 
   private[this] val dynamicPoxies = scala.collection.mutable.Map[String, ServiceProxy]()
@@ -242,7 +254,7 @@ class ReverseProxy @Inject () (
       // TODO: This only happens for flow engineers sending requests
       // to specific hosts. Should we lock?
       dynamicPoxies.get(host).getOrElse {
-        val proxy = serviceProxyFactory(ServiceProxyDefinition(host = host, name = "fallback"))
+        val proxy = serviceProxyFactory(ServiceProxyDefinition(host = host, names = Seq("fallback")))
         dynamicPoxies += (host -> proxy)
         proxy
       }

@@ -157,7 +157,7 @@ class ServiceProxyImpl @Inject () (
     auth: Option[FlowAuthData]
   ) = {
     val body = FormData.toJson(request.queryString - "method" - "callback")
-    val finalHeaders = setContentType(proxyHeaders(requestId, request.headers, method, auth), ApplicationJsonContentType)
+    val finalHeaders = setContentType(proxyHeaders(requestId, request.headers, request.method, auth), ApplicationJsonContentType)
 
     val req = ws.url(definition.host + request.path)
       .withFollowRedirects(false)
@@ -196,7 +196,7 @@ class ServiceProxyImpl @Inject () (
     request: Request[RawBuffer],
     auth: Option[FlowAuthData]
   ) = {
-    val finalHeaders = proxyHeaders(requestId, request.headers, method, auth)
+    val finalHeaders = proxyHeaders(requestId, request.headers, request.method, auth)
     val req = ws.url(definition.host + request.path)
       .withFollowRedirects(false)
       .withMethod(method)

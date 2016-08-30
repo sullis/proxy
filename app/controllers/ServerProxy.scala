@@ -14,30 +14,30 @@ import play.api.mvc._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 import play.api.http.HttpEntity
-import lib.{Constants, FlowAuth, FlowAuthData, FormData}
-  import play.api.libs.json.{JsValue, Json}
+import lib.{Constants, FlowAuth, FlowAuthData, FormData, Server}
+import play.api.libs.json.{JsValue, Json}
 
-
-case class ServiceProxyDefinition(
-  host: String,
-  names: Seq[String]
+case class ServerProxyDefinition(
+  server: Server
 ) {
 
-  val contextName = names.sorted.head + "-context"
-  val nameLabel = names.sorted.mkString(",")
-  val hostHeaderValue = (new URI(host)).getHost
+  val contextName = s"${server.name}-context"
+
+  val hostHeaderValue = Option((new URI(server.host)).getHost).getOrElse {
+    sys.error(s"Could not parse host from server[$server]")
+  }
 
 }
 
 /**
-  * Service Proxy is responsible for proxying all requests to a given
-  * service. The primary purpose of the proxy is to segment our thread
-  * pools by service - so if one service is having difficulty, it is
-  * less likely to impact other services.
+  * Server Proxy is responsible for proxying all requests to a given
+  * server. The primary purpose of the proxy is to segment our thread
+  * pools by server - so if one server is having difficulty, it is
+  * less likely to impact other servers.
   */
-trait ServiceProxy {
+trait ServerProxy {
 
-  def definition: ServiceProxyDefinition
+  def definition: ServerProxyDefinition
 
   def proxy(
     requestId: String,
@@ -48,12 +48,12 @@ trait ServiceProxy {
 
 }
 
-object ServiceProxy {
+object ServerProxy {
 
-  val DefaultContextName = s"default-service-context"
+  val DefaultContextName = s"default-server-context"
 
   trait Factory {
-    def apply(definition: ServiceProxyDefinition): ServiceProxy
+    def apply(definition: ServerProxyDefinition): ServerProxy
   }
 
   /**
@@ -87,21 +87,21 @@ object ServiceProxy {
   }
 }
 
-class ServiceProxyModule extends AbstractModule {
+class ServerProxyModule extends AbstractModule {
   def configure {
     install(new FactoryModuleBuilder()
-      .implement(classOf[ServiceProxy], classOf[ServiceProxyImpl])
-      .build(classOf[ServiceProxy.Factory])
+      .implement(classOf[ServerProxy], classOf[ServerProxyImpl])
+      .build(classOf[ServerProxy.Factory])
     )
   }
 }
 
-class ServiceProxyImpl @Inject () (
+class ServerProxyImpl @Inject () (
   system: ActorSystem,
   ws: WSClient,
   flowAuth: FlowAuth,
-  @Assisted override val definition: ServiceProxyDefinition
-) extends ServiceProxy with Controller{
+  @Assisted override val definition: ServerProxyDefinition
+) extends ServerProxy with Controller{
 
   private[this] implicit val (ec, name) = {
     val name = definition.contextName
@@ -109,13 +109,13 @@ class ServiceProxyImpl @Inject () (
       system.dispatchers.lookup(name)
     } match {
       case Success(ec) => {
-        Logger.info(s"ServiceProxy[${definition.nameLabel}] using configured execution context[$name]")
+        Logger.info(s"ServerProxy[${definition.server.name}] using configured execution context[$name]")
         (ec, name)
       }
 
       case Failure(_) => {
-        Logger.warn(s"ServiceProxy[${definition.nameLabel}] execution context[${name}] not found - using ${ServiceProxy.DefaultContextName}")
-        (system.dispatchers.lookup(ServiceProxy.DefaultContextName), ServiceProxy.DefaultContextName)
+        Logger.warn(s"ServerProxy[${definition.server.name}] execution context[${name}] not found - using ${ServerProxy.DefaultContextName}")
+        (system.dispatchers.lookup(ServerProxy.DefaultContextName), ServerProxy.DefaultContextName)
       }
     }
   }
@@ -136,7 +136,7 @@ class ServiceProxyImpl @Inject () (
     method: String,
     auth: Option[FlowAuthData]
   ) = {
-    Logger.info(s"[proxy] ${request.method} ${request.path} to [${definition.nameLabel}] $method ${definition.host}${request.path} requestId $requestId")
+    Logger.info(s"[proxy] ${request.method} ${request.path} to [${definition.server.name}] $method ${definition.server.host}${request.path} requestId $requestId")
 
     request.queryString.get("callback").getOrElse(Nil).headOption match {
       case Some(callback) => {
@@ -159,7 +159,7 @@ class ServiceProxyImpl @Inject () (
     val body = FormData.toJson(request.queryString - "method" - "callback")
     val finalHeaders = setContentType(proxyHeaders(requestId, request.headers, request.method, auth), ApplicationJsonContentType)
 
-    val req = ws.url(definition.host + request.path)
+    val req = ws.url(definition.server.host + request.path)
       .withFollowRedirects(false)
       .withMethod(method)
       .withHeaders(finalHeaders.headers: _*)
@@ -171,8 +171,7 @@ class ServiceProxyImpl @Inject () (
       // Prefix is to avoid a JSONP/Flash vulnerability
       val finalBody = "/**/" + callback + "(" + jsonpEnvelope(response.status, response.allHeaders, response.body) + ")"
 
-      // TODO: Add envelope
-      Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.nameLabel}:$method ${definition.host}${request.path} ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
+      Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name}:$method ${definition.server.host}${request.path} ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
 
       Ok(finalBody).as("application/javascript; charset=utf-8")
     }
@@ -197,10 +196,10 @@ class ServiceProxyImpl @Inject () (
     auth: Option[FlowAuthData]
   ) = {
     val finalHeaders = proxyHeaders(requestId, request.headers, request.method, auth)
-    val req = ws.url(definition.host + request.path)
+    val req = ws.url(definition.server.host + request.path)
       .withFollowRedirects(false)
       .withMethod(method)
-      .withQueryString(ServiceProxy.query(request.queryString): _*)
+      .withQueryString(ServerProxy.query(request.queryString): _*)
 
     val finalRequest = finalHeaders.get("Content-Type").getOrElse(DefaultContentType) match {
 
@@ -230,7 +229,7 @@ class ServiceProxyImpl @Inject () (
         val contentType: Option[String] = response.headers.get("Content-Type").flatMap(_.headOption)
         val contentLength: Option[Long] = response.headers.get("Content-Length").flatMap(_.headOption).flatMap(toLongSafe(_))
 
-        Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.nameLabel}:$method ${definition.host}${request.path} ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
+        Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name}:$method ${definition.server.host}${request.path} ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
 
         // If there's a content length, send that, otherwise return the body chunked
         contentLength match {
@@ -265,7 +264,7 @@ class ServiceProxyImpl @Inject () (
   ): Headers = {
 
     val headersToAdd = Seq(
-      Constants.Headers.FlowService -> name,
+      Constants.Headers.FlowServer -> name,
       Constants.Headers.FlowRequestId -> requestId,
       Constants.Headers.Host -> definition.hostHeaderValue,
       Constants.Headers.ForwardedHost -> headers.get(Constants.Headers.Host).getOrElse(""),

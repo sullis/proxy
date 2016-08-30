@@ -17,46 +17,47 @@ case class Index(config: ProxyConfig) {
 
   /**
     * Create two indexes of the routes:
-    *   - static routes are simple lookups by path (Map[String, InternalRoute])
-    *   - dynamic routes is a map from the HTTP Method to a list of routes to try (Seq[InternalRoute])
+    *   - static routes are simple lookups by path (Map[String, Route])
+    *   - dynamic routes is a map from the HTTP Method to a list of routes to try (Seq[Route])
     */
   private[this] val (staticRouteMap, dynamicRoutes) = {
-    val all: Seq[InternalRoute] = config.services.flatMap { s =>
-      s.routes.map { r =>
-        InternalRoute(r, s.host)
-      }
-    }
+    val all: Seq[Operation] = config.operations
 
-    val dynamicRoutes = all.flatMap {
-      case r: InternalRoute.Dynamic => Some(r)
-      case r: InternalRoute.Static => None
+    val dynamicRoutes = all.flatMap { op =>
+      op.route match {
+        case r: Route.Dynamic => Some(op)
+        case r: Route.Static => None
+      }
     }
 
     // Map from method name to list of internal routes
-    var dynamicRouteMap = scala.collection.mutable.Map[String, Seq[InternalRoute.Dynamic]]()
-    all.foreach {
-      case r: InternalRoute.Dynamic => {
-        dynamicRouteMap.get(r.method) match {
-          case None => {
-            dynamicRouteMap += (r.method -> Seq(r))
-          }
-          case Some(els) => {
-            dynamicRouteMap += (r.method -> (els ++ Seq(r)))
+    var dynamicRouteMap = scala.collection.mutable.Map[String, Seq[Operation]]()
+    all.foreach { op =>
+      op.route match {
+        case r: Route.Dynamic => {
+          dynamicRouteMap.get(r.method) match {
+            case None => {
+              dynamicRouteMap += (r.method -> Seq(op))
+            }
+            case Some(operations) => {
+              dynamicRouteMap += (r.method -> (operations ++ Seq(op)))
+            }
           }
         }
-      }
-      case r: InternalRoute.Static => {
+        case r: Route.Static => // no-op
       }
     }
 
-    val staticRoutes = all.flatMap {
-      case r: InternalRoute.Dynamic => None
-      case r: InternalRoute.Static => Some(r)
+    val staticRoutes = all.flatMap { op =>
+      op.route match {
+        case r: Route.Dynamic => None
+        case r: Route.Static => Some(op)
+      }
     }
 
     val staticRouteMap = Map(
-      staticRoutes.map { ir =>
-        (routeKey(ir.method, ir.path) -> ir)
+      staticRoutes.map { op =>
+        (routeKey(op.route.method, op.route.path) -> op)
       }: _*
     )
 
@@ -65,7 +66,7 @@ case class Index(config: ProxyConfig) {
     (staticRouteMap, dynamicRouteMap.toMap)
   }
 
-  final def resolve(method: String, path: String): Option[InternalRoute] = {
+  final def resolve(method: String, path: String): Option[Operation] = {
     staticRouteMap.get(routeKey(method, path)) match {
       case None => {
         dynamicRoutes.get(method.toUpperCase) match {
@@ -73,12 +74,12 @@ case class Index(config: ProxyConfig) {
             None
           }
           case Some(routes) => {
-            routes.find(_.matches(method.toUpperCase, path.toLowerCase.trim))
+            routes.find(_.route.matches(method.toUpperCase, path.toLowerCase.trim))
           }
         }
       }
-      case Some(ir) => {
-        Some(ir)
+      case Some(op) => {
+        Some(op)
       }
     }
   }

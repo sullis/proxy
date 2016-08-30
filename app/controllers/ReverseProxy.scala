@@ -56,7 +56,7 @@ class ReverseProxy @Inject () (
           sys.error(s"Duplicate server with name[${s.name}]")
         }
         case false => {
-          all += (s.host -> serverProxyFactory(ServerProxyDefinition(s)))
+          all += (s.name -> serverProxyFactory(ServerProxyDefinition(s)))
         }
       }
     }

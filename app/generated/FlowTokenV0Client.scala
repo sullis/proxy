@@ -318,6 +318,7 @@ package io.flow.token.v0 {
   }
 
   class Client(
+    ws: play.api.libs.ws.WSClient,
     val baseUrl: String = "https://token.api.flow.io",
     auth: scala.Option[io.flow.token.v0.Authorization] = None,
     defaultHeaders: Seq[(String, String)] = Nil
@@ -463,9 +464,8 @@ package io.flow.token.v0 {
     }
 
     def _requestHolder(path: String): play.api.libs.ws.WSRequest = {
-      import play.api.Play.current
-
-      val holder = play.api.libs.ws.WS.url(baseUrl + path).withHeaders(
+      
+      val holder = ws.url(baseUrl + path).withHeaders(
         "User-Agent" -> Constants.UserAgent,
         "X-Apidoc-Version" -> Constants.Version,
         "X-Apidoc-Version-Major" -> Constants.VersionMajor.toString

@@ -59,6 +59,7 @@ class ApidocServicesFetcher @Inject() (
   private[this] lazy val Uris: Seq[URL] = config.requiredString("apidoc.service.uris").split(",").map(_.trim).map { new URL(_) }
 
   def load(uris: Seq[URL]): Either[Seq[String], ApidocServices] = {
+    Logger.info(s"ApidocServicesFetcher: fetching configuration from uris[$uris]")
     combine(uris, ApidocServices.Empty)
   }
 

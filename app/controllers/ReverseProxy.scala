@@ -129,7 +129,7 @@ class ReverseProxy @Inject () (
               lookup(operation.server.name).proxy(
                 requestId,
                 request,
-                method,
+                operation.route,
                 userId.map { uid =>
                   FlowAuthData.user(requestId, uid)
                 }
@@ -142,7 +142,7 @@ class ReverseProxy @Inject () (
                   lookup(operation.server.name).proxy(
                     requestId,
                     request,
-                    method,
+                    operation.route,
                     userId.map { uid =>
                       FlowAuthData.user(requestId, uid)
                     }
@@ -159,7 +159,7 @@ class ReverseProxy @Inject () (
                       lookup(operation.server.name).proxy(
                         requestId,
                         request,
-                        method,
+                        operation.route,
                         Some(auth)
                       )
                     }

@@ -15,7 +15,7 @@ import play.api.mvc._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 import play.api.http.HttpEntity
-import lib.{Constants, FlowAuth, FlowAuthData, Server}
+import lib.{Constants, FlowAuth, FlowAuthData, Route, Server}
 import play.api.libs.json.{JsValue, Json}
 
 case class ServerProxyDefinition(
@@ -44,7 +44,7 @@ trait ServerProxy {
   def proxy(
     requestId: String,
     request: Request[RawBuffer],
-    method: String,
+    route: Route,
     auth: Option[FlowAuthData]
   ): Future[play.api.mvc.Result]
 
@@ -135,18 +135,18 @@ class ServerProxyImpl @Inject () (
   override final def proxy(
     requestId: String,
     request: Request[RawBuffer],
-    method: String,
+    route: Route,
     auth: Option[FlowAuthData]
   ) = {
-    Logger.info(s"[proxy] ${request.method} ${request.path} to [${definition.server.name}] $method ${definition.server.host}${request.path} requestId $requestId")
+    Logger.info(s"[proxy] ${request.method} ${request.path} to [${definition.server.name}] ${route.method} ${definition.server.host}${request.path} requestId $requestId")
 
     request.queryString.get("callback").getOrElse(Nil).headOption match {
       case Some(callback) => {
-        jsonp(requestId, callback, request, method, auth)
+        jsonp(requestId, callback, request, route, auth)
       }
 
       case None => {
-        standard(requestId, method, request, auth)
+        standard(requestId, route, request, auth)
       }
     }
   }
@@ -155,14 +155,14 @@ class ServerProxyImpl @Inject () (
     requestId: String,
     callback: String,
     request: Request[RawBuffer],
-    method: String,
+    route: Route,
     auth: Option[FlowAuthData]
   ) = {
     val formData = FormData.toJson(request.queryString - "method" - "callback")
-    definition.multiService.validate(method, request.path, formData) match {
+    definition.multiService.validate(route.method, route.path, formData) match {
       case Left(errors) => {
         val finalBody = jsonpEnvelope(callback, 422, Map(), errors.toString)
-        Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name}:$method ${definition.server.host}${request.path} 422")
+        Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name}:${route.method} ${definition.server.host}${request.path} 422")
         Future(Ok(finalBody).as("application/javascript; charset=utf-8"))
       }
 
@@ -171,7 +171,7 @@ class ServerProxyImpl @Inject () (
 
         val req = ws.url(definition.server.host + request.path)
           .withFollowRedirects(false)
-          .withMethod(method)
+          .withMethod(route.method)
           .withHeaders(finalHeaders.headers: _*)
           .withBody(body)
 
@@ -179,7 +179,7 @@ class ServerProxyImpl @Inject () (
         req.execute.map { response =>
           val timeToFirstByteMs = System.currentTimeMillis - startMs
           val finalBody = jsonpEnvelope(callback, response.status, response.allHeaders, response.body)
-          Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name}:$method ${definition.server.host}${request.path} ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
+          Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name}:${route.method} ${definition.server.host}${request.path} ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
           Ok(finalBody).as("application/javascript; charset=utf-8")
         }
       }
@@ -203,14 +203,14 @@ class ServerProxyImpl @Inject () (
 
   private[this] def standard(
     requestId: String,
-    method: String,
+    route: Route,
     request: Request[RawBuffer],
     auth: Option[FlowAuthData]
   ) = {
     val finalHeaders = proxyHeaders(requestId, request.headers, request.method, auth)
     val req = ws.url(definition.server.host + request.path)
       .withFollowRedirects(false)
-      .withMethod(method)
+      .withMethod(route.method)
       .withQueryString(ServerProxy.query(request.queryString): _*)
 
     val finalRequest = finalHeaders.get("Content-Type").getOrElse(DefaultContentType) match {
@@ -219,7 +219,6 @@ class ServerProxyImpl @Inject () (
       case UrlFormEncodedContentType => {
         val b: String = request.body.asBytes().get.decodeString("UTF-8")
         val newBody = FormData.toJson(FormData.parseEncoded(b))
-        println(s"newBody: $newBody")
 
         req
           .withHeaders(setContentType(finalHeaders, ApplicationJsonContentType).headers: _*)
@@ -241,7 +240,7 @@ class ServerProxyImpl @Inject () (
         val contentType: Option[String] = response.headers.get("Content-Type").flatMap(_.headOption)
         val contentLength: Option[Long] = response.headers.get("Content-Length").flatMap(_.headOption).flatMap(toLongSafe(_))
 
-        Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name}:$method ${definition.server.host}${request.path} ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
+        Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name}:${route.method} ${definition.server.host}${request.path} ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
 
         // If there's a content length, send that, otherwise return the body chunked
         contentLength match {

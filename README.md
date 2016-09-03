@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/flowvault/proxy.svg?token=8bzVqzHy6JVEQr9mN9hx&branch=master)](https://travis-ci.com/flowvault/proxy)
+[![Build Status](https://travis-ci.org/flowvault/proxy.svg?token=8bzVqzHy6JVEQr9mN9hx&branch=master)](https://travis-ci.org/flowvault/proxy)
 
 # Proxy
 

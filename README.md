@@ -15,6 +15,13 @@ API Proxy server that is hosted at https://api.flow.io
     organization and membership role when checked
   - Implements optional configuration of independent thread pools for each backend
     service (catalog service has one thread pool)
+  - Any path that starts with /internal is treated as internal to Flow. Validates that the
+    provided API Key is valid for the flow organization
+  - Implements JSONP proxy based on presence of url parameter named 'callback' and optional
+    parameter named 'request'
+  - Converts www form urlencoded strings (body and query for JSONP) into form data, validating
+    and converting types according to one or more apidoc schemas (via environment variable
+    named APIDOC_SERVICE_URIS)
 
 ## Bypassing proxy
 
@@ -45,20 +52,13 @@ View current configuration, including all services and routes:
 http://localhost:9000/_internal_/config
 ```
 
-## Flow Configuration
+## Example configuration files
 
-Running locally:
+environment variable | example URL
+-------------------- | ---------------
+PROXY_CONFIG_URIS    | https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/development.config
+APIDOC_SERVICE_URIS  | https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/latest/api.service.json
 
-    PROXY_CONFIG_URIS=https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/development.config JWT_SALT=test sbt
+Multiple URIS can be provided as a single, comma-separated string.
 
-Development configuration file:
-
-    PROXY_CONFIG_URIS="https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/development.config"
-
-Workstation configuration file:
-
-    PROXY_CONFIG_URIS="https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/workstation.config"
-
-Production configuration file:
-
-    PROXY_CONFIG_URIS="https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/production.config"
+[Learn more about apidoc](http://apidoc.me)

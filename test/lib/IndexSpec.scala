@@ -64,17 +64,20 @@ class IndexSpec extends PlaySpec with OneServerPerSuite {
   // We leave this here as a simple way to evaluate impact
   // on peformance of changes in the path resolution libraries
   "performance measurement" in {
-    //val uri = "https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/development.config"
-    val uri = "file:///tmp/api-proxy.development.config"
+    val uri = "https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/development.config"
+    //val uri = "file:///tmp/api-proxy.development.config"
     val contents = Source.fromURL(uri).mkString
     val config = ConfigParser.parse(source.uri, contents).validate().right.get
     val index = Index(config)
 
-    val ms = time(100) { () =>
+    val ms = time(1000) { () =>
       index.resolve("GET", "/flow/catalog/items")
       index.resolve("GET", "/organizations")
+      index.resolve("GET", "/:organization/catalog/items")
+      index.resolve("GET", "/:organization/catalog/items/:number")
     }
-    //println(s"ms: $ms")
+    println(s"1000 path lookups took $ms ms")
+    ms < 50 must be(true)
   }
 
   def time(numberIterations: Int = 10000)(f: () => Unit): Long = {

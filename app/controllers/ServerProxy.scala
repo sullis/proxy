@@ -20,7 +20,7 @@ import play.api.libs.json.{JsValue, Json}
 
 case class ServerProxyDefinition(
   server: Server,
-  apidocServices: lib.ApidocServices // TODO Move higher level
+  multiService: io.flow.lib.apidoc.json.validation.MultiService // TODO Move higher level
 ) {
 
   val contextName = s"${server.name}-context"
@@ -159,7 +159,7 @@ class ServerProxyImpl @Inject () (
     auth: Option[FlowAuthData]
   ) = {
     val formData = FormData.toJson(request.queryString - "method" - "callback")
-    definition.apidocServices.validate(method, request.path, formData) match {
+    definition.multiService.validate(method, request.path, formData) match {
       case Left(errors) => {
         val finalBody = jsonpEnvelope(callback, 422, Map(), errors.toString)
         Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name}:$method ${definition.server.host}${request.path} 422")

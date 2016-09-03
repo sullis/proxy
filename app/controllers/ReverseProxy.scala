@@ -49,7 +49,7 @@ class ReverseProxy @Inject () (
     new TokenClient(ws, baseUrl = server.host)
   }
 
-  private[this] val apidocServices = apidocServicesFetcher.current()
+  private[this] val multiService = apidocServicesFetcher.current()
   
   private[this] val proxies: Map[String, ServerProxy] = {
     Logger.info(s"ReverseProxy loading config sources: ${index.config.sources}")
@@ -60,7 +60,7 @@ class ReverseProxy @Inject () (
           sys.error(s"Duplicate server with name[${s.name}]")
         }
         case false => {
-          all += (s.name -> serverProxyFactory(ServerProxyDefinition(s, apidocServices)))
+          all += (s.name -> serverProxyFactory(ServerProxyDefinition(s, multiService)))
         }
       }
     }

@@ -1,6 +1,7 @@
 package lib
 
 import controllers.{ServerProxy, ServerProxyDefinition, ServerProxyImpl}
+import io.flow.lib.apidoc.json.validation.MultiService
 import org.scalatest._
 import org.scalatestplus.play._
 import play.api.test._
@@ -26,7 +27,7 @@ class ServerParserSpec extends PlaySpec with OneServerPerSuite {
 
   "hostHeaderValue" in {
     Seq("http://user.api.flow.io", "https://user.api.flow.io").foreach { host =>
-      ServerProxyDefinition(Server("user", host), ApidocServices.Empty).hostHeaderValue must be("user.api.flow.io")
+      ServerProxyDefinition(Server("user", host), MultiService(Nil)).hostHeaderValue must be("user.api.flow.io")
     }
   }
 
@@ -120,7 +121,7 @@ operations:
         // make sure all servers have a defined execution context
         config.servers.filter { server =>
           serverProxyFactory(
-            ServerProxyDefinition(server, ApidocServices.Empty)
+            ServerProxyDefinition(server, MultiService(Nil))
           ).asInstanceOf[ServerProxyImpl].executionContextName == ServerProxy.DefaultContextName
         }.map(_.name).toList match {
           case Nil => {}

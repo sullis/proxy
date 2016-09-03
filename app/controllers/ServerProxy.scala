@@ -162,7 +162,7 @@ class ServerProxyImpl @Inject () (
     val formData = FormData.toJson(request.queryString - "method" - "callback")
     definition.multiService.validate(route.method, route.path, formData) match {
       case Left(errors) => {
-        val finalBody = jsonpEnvelope(callback, 422, Map(), errors.toString)
+        val finalBody = jsonpEnvelope(callback, 422, Map(), makeValidationErrors(errors).toString)
         Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name}:${route.method} ${definition.server.host}${request.path} 422 based on apidoc schema")
         Future(Ok(finalBody).as("application/javascript; charset=utf-8"))
       }
@@ -226,7 +226,7 @@ class ServerProxyImpl @Inject () (
             Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name}:${route.method} ${definition.server.host}${request.path} 422 based on apidoc schema")
             Future(
               UnprocessableEntity(
-                Json.toJson(makeErrors("validation_error", errors))
+                Json.toJson(makeValidationErrors(errors))
               ).withHeaders("X-Flow-Proxy-Validation" -> "apidoc")
             )
           }
@@ -293,6 +293,8 @@ class ServerProxyImpl @Inject () (
     val msg = s"A server error has occurred (#$errorId)"
     InternalServerError(makeErrors("server_error", Seq(msg)))
   }
+
+  private[this] def makeValidationErrors(errors: Seq[String]) = makeErrors("validation_error", errors)
 
   /**
     * Generate error message compatible with flow 'error' type

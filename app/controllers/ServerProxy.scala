@@ -182,6 +182,10 @@ class ServerProxyImpl @Inject () (
           val finalBody = jsonpEnvelope(callback, response.status, response.allHeaders, response.body)
           Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name}:${route.method} ${definition.server.host}${request.path} ${response.status} ${timeToFirstByteMs}ms requestId $requestId")
           Ok(finalBody).as("application/javascript; charset=utf-8")
+        }.recover {
+          case ex: Throwable => {
+            errorHandler(requestId, request, ex)
+          }
         }
       }
     }
@@ -246,6 +250,7 @@ class ServerProxyImpl @Inject () (
           .withHeaders(finalHeaders.headers: _*)
           .withBody(request.body.asBytes().get)
           .stream
+          .recover { case ex: Throwable => errorHandler(requestId, request, ex) }
       }
     }
     

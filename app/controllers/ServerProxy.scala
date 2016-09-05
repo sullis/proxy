@@ -248,7 +248,12 @@ class ServerProxyImpl @Inject () (
       case ApplicationJsonContentType => {
         val body = request.body.asBytes().get.decodeString("UTF-8")
         Try {
-          Json.parse(body)
+          if (body.trim.isEmpty) {
+            // e.g. PUT/DELETE with empty body
+            Json.obj()
+          } else {
+            Json.parse(body)
+          }
         } match {
           case Failure(e) => {
             Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name}:${route.method} ${definition.server.host}${request.path} 422 invalid json")

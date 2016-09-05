@@ -245,6 +245,43 @@ class ServerProxyImpl @Inject () (
         }
       }
 
+      case ApplicationJsonContentType => {
+        val body = request.body.asBytes().get.decodeString("UTF-8")
+        Try {
+          Json.parse(body)
+        } match {
+          case Failure(e) => {
+            Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name}:${route.method} ${definition.server.host}${request.path} 422 invalid json")
+            Future(
+              UnprocessableEntity(
+                Json.toJson(makeErrors("invalid_json", Seq(s"The body of an application/json request must contain valid json: ${e.getMessage}")))
+              ).withHeaders("X-Flow-Proxy-Validation" -> "proxy")
+            )
+          }
+
+          case Success(js) => {
+            definition.multiService.validate(route.method, route.path, js) match {
+              case Left(errors) => {
+                Logger.info(s"[proxy] ${request.method} ${request.path} ${definition.server.name}:${route.method} ${definition.server.host}${request.path} 422 based on apidoc schema")
+                Future(
+                  UnprocessableEntity(
+                    Json.toJson(makeValidationErrors(errors))
+                  ).withHeaders("X-Flow-Proxy-Validation" -> "apidoc")
+                )
+              }
+
+              case Right(validatedBody) => {
+                req
+                  .withHeaders(setContentType(finalHeaders, ApplicationJsonContentType).headers: _*)
+                  .withBody(validatedBody)
+                  .stream
+                  .recover { case ex: Throwable => errorHandler(requestId, request, ex) }
+              }
+            }
+          }
+        }
+      }
+
       case _ => {
         req
           .withHeaders(finalHeaders.headers: _*)
@@ -253,7 +290,7 @@ class ServerProxyImpl @Inject () (
           .recover { case ex: Throwable => errorHandler(requestId, request, ex) }
       }
     }
-    
+
     val startMs = System.currentTimeMillis
 
     response.map {

@@ -32,7 +32,13 @@ object Authorization {
     * Indicates JWT Bearer data was presented as authorization
     * header; but data was not valid.
     */
-  case object InvalidJwt extends Authorization
+  case class InvalidJwt(missing: Seq[String]) extends Authorization
+
+  /**
+    * Indicates JWT Bearer data was presented as authorization
+    * header; but data was not valid.
+    */
+  case object InvalidBearer extends Authorization
 
   /**
     * Indicates valid API Token for a given user.
@@ -83,7 +89,7 @@ class AuthorizationParser @Inject() (
       case "Bearer" :: value :: Nil => {
         value match {
           case JsonWebToken(header, claimsSet, signature) if jwtIsValid(value) => parseJwtToken(claimsSet)
-          case _ => Authorization.InvalidJwt
+          case _ => Authorization.InvalidBearer
         }
       }
 
@@ -97,11 +103,11 @@ class AuthorizationParser @Inject() (
     claimsSet.asSimpleMap.toOption match {
       case Some(claims) => {
         claims.get("id") match {
-          case None => Authorization.InvalidJwt
+          case None => Authorization.InvalidJwt(Seq("id"))
           case Some(userId) => Authorization.User(userId)
         }
       }
 
-      case _ => Authorization.InvalidJwt
+      case _ => Authorization.InvalidBearer
     }
 }

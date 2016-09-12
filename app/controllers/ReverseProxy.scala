@@ -77,23 +77,27 @@ class ReverseProxy @Inject () (
         proxyPostAuth(requestId, request, userId = None)
       }
 
-      case Authorization.Unrecognized => Future {
+      case Authorization.Unrecognized => Future(
         unauthorized(s"Authorization header value must start with one of: " + Authorization.Unrecognized.valid.mkString(", "))
-      }
+      )
 
-      case Authorization.InvalidApiToken => Future {
+      case Authorization.InvalidApiToken => Future(
         unauthorized(s"API Token is not valid")
-      }
+      )
 
-      case Authorization.InvalidJwt => Future {
-        unauthorized(s"JWT Token is not valid")
-      }
+      case Authorization.InvalidJwt(missing) => Future(
+        unauthorized(s"JWT Token is not valid. Missing ${missing.mkString(", ")} from the JWT Claimset")
+      )
+
+      case Authorization.InvalidBearer => Future(
+        unauthorized("Value for Bearer header was not formatted correctly. We expect a JWT Token.")
+      )
 
       case Authorization.Token(token) => {
         resolveToken(requestId, token).flatMap {
-          case None => Future {
+          case None => Future(
             unauthorized(s"API Token is not valid")
-          }
+          )
           case Some(user) => {
             proxyPostAuth(requestId, request, userId = Some(user.id))
           }
@@ -119,9 +123,7 @@ class ReverseProxy @Inject () (
 
     resolve(requestId, method, request, userId).flatMap { result =>
       result match {
-        case Left(result) => Future {
-          result
-        }
+        case Left(result) => Future(result)
 
         case Right(operation) => {
           operation.route.organization(request.path) match {
@@ -151,9 +153,9 @@ class ReverseProxy @Inject () (
 
                 case Some(uid) => {
                   resolveOrganizationAuthorization(requestId, uid, org).flatMap {
-                    case None => Future {
+                    case None => Future(
                       unauthorized(s"Not authorized to access $org or the organization does not exist")
-                    }
+                    )
 
                     case Some(auth) => {
                       lookup(operation.server.name).proxy(
@@ -210,11 +212,11 @@ class ReverseProxy @Inject () (
 
       case false => {
         userId match {
-          case None => Future {
+          case None => Future(
             Left(
               unauthorized(s"Must authenticate to specify[${Constants.Headers.FlowServer} or ${Constants.Headers.FlowHost}]")
             )
-          }
+          )
 
           case Some(uid) => {
             resolveOrganizationAuthorization(requestId, uid, Constants.FlowOrganizationId).map {

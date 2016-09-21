@@ -208,6 +208,8 @@ class ServerProxyImpl @Inject () (
     ")"
   }
 
+  private[this] def enc(value: String) = java.net.URLEncoder.encode(value, "utf-8")
+
   private[this] def standard(
     requestId: String,
     route: Route,
@@ -221,14 +223,10 @@ class ServerProxyImpl @Inject () (
     val (originalPathWithQuery, rewrittenPathWithQuery) = originalQuery.isEmpty match {
       case true => (request.path, request.path)
       case false => {
-        val orig = originalQuery.map { case (key, values) =>
-          values.map { v =>
-            "%s=%s".format(key, v)
-          }.mkString("&")
-        }
-
-        val rewritten = finalQuery.map { case (key, value) => "%s=%s".format(key, value) }.mkString("&")
-        (s"${request.path}?$orig", s"${request.path}?$rewritten")
+        val rewritten = finalQuery.map { case (key, value) =>
+          s"${enc(key)}=${enc(value)}"
+        }.mkString("&")
+        (request.uri, s"${request.path}?$rewritten")
       }
     }
 

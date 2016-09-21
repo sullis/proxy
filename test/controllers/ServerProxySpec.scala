@@ -34,4 +34,14 @@ class ServerProxySpec extends PlaySpec with OneServerPerSuite {
     parts.contains(("foo2", "c")) must be(true)
   }
 
+  "encoding" in {
+    val parts = ServerProxy.query(
+      Map[String, Seq[String]](
+        "q" -> Seq("category:shoes")
+      )
+    )
+    parts.size must be(1)
+    parts.contains(("q", "category%3Ashoes")) must be(true)
+  }
+
 }

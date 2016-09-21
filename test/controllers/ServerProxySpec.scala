@@ -41,7 +41,7 @@ class ServerProxySpec extends PlaySpec with OneServerPerSuite {
       )
     )
     parts.size must be(1)
-    parts.contains(("q", "category%3Ashoes")) must be(true)
+    parts.contains(("q", "category:shoes")) must be(true)
   }
 
 }

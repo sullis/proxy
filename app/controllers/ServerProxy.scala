@@ -85,11 +85,7 @@ object ServerProxy {
   def query(
     incoming: Map[String, Seq[String]]
   ): Seq[(String, String)] = {
-    println("incoming: " + incoming)
-    println("toJson: " + FormData.toJson(incoming))
-    println("toEncoded: " + FormData.toEncoded(FormData.toJson(incoming)))
     val rewritten = FormData.parseEncoded(FormData.toEncoded(FormData.toJson(incoming)))
-    println("rewritten: " + rewritten)
     rewritten.map { case (k, vs) =>
       vs.map(k -> _)
     }.flatten.toSeq

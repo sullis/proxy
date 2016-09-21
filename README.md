@@ -18,7 +18,8 @@ API Proxy server that is hosted at https://api.flow.io
   - Any path that starts with /internal is treated as internal to Flow. Validates that the
     provided API Key is valid for the flow organization
   - Implements JSONP proxy based on presence of url parameter named 'callback' and optional
-    parameter named 'request'
+    parameter named 'method' that is used to specify the HTTP method to use when proxying request
+    to the backend.
   - Converts www form urlencoded strings (body and query for JSONP) into form data, validating
     and converting types according to one or more apidoc schemas (via environment variable
     named APIDOC_SERVICE_URIS)

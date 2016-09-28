@@ -3,6 +3,8 @@ package controllers
 import akka.actor.ActorSystem
 import com.google.inject.AbstractModule
 import com.google.inject.assistedinject.{Assisted, FactoryModuleBuilder}
+import io.flow.error.v0.models.ValidationError
+import io.flow.error.v0.models.json._
 import io.flow.lib.apidoc.json.validation.FormData
 import java.net.URI
 import java.util.UUID
@@ -274,7 +276,7 @@ class ServerProxyImpl @Inject () (
             Logger.info(s"[proxy] ${request.method} $originalPathWithQuery 422 invalid json")
             Future(
               UnprocessableEntity(
-                Json.toJson(makeErrors("invalid_json", Seq(s"The body of an application/json request must contain valid json: ${e.getMessage}")))
+                Json.toJson(makeErrors(Seq(s"The body of an application/json request must contain valid json: ${e.getMessage}")))
               ).withHeaders("X-Flow-Proxy-Validation" -> "proxy")
             )
           }
@@ -353,19 +355,19 @@ class ServerProxyImpl @Inject () (
     val errorId = "api" + UUID.randomUUID.toString.replaceAll("-", "")
     Logger.error(s"[proxy] FlowError [$errorId] ${request.method} ${request.path} $requestId: ${ex.getMessage}", ex)
     val msg = s"A server error has occurred (#$errorId)"
-    InternalServerError(makeErrors("server_error", Seq(msg)))
+    InternalServerError(makeErrors(Seq(msg)))
   }
 
-  private[this] def makeValidationErrors(errors: Seq[String]) = makeErrors("validation_error", errors)
+  private[this] def makeValidationErrors(errors: Seq[String]) = makeErrors(errors)
 
   /**
     * Generate error message compatible with flow 'error' type
     */
-  private[this] def makeErrors(code: String, errors: Seq[String]): JsValue = {
-    JsArray(
-      errors.map { error =>
-        Json.obj("code" -> code, "message" -> error)
-      }
+  private[this] def makeErrors(errors: Seq[String]): JsValue = {
+    Json.toJson(
+      ValidationError(
+        messages = errors
+      )
     )
   }
 

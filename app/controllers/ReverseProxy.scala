@@ -1,7 +1,7 @@
 package controllers
 
 import akka.actor.ActorSystem
-import io.flow.error.v0.models.ValidationError
+import io.flow.error.v0.models.GenericError
 import io.flow.error.v0.models.json._
 import io.flow.common.v0.models.UserReference
 import io.flow.token.v0.{Client => TokenClient}
@@ -299,7 +299,7 @@ class ReverseProxy @Inject () (
 
   private[this] def errorJson(message: String) = {
     Json.toJson(
-      ValidationError(
+      GenericError(
         messages = Seq(message)
       )
     )

@@ -23,8 +23,25 @@ PORT = 7000
 
 version = ARGV.shift.to_s.strip
 if version.empty?
-  puts "ERROR: Specify version to deploy"
-  exit(1)
+  default = if system("which sem-info")
+              tag = `sem-info tag latest`.strip
+              tag.empty? ? nil : tag
+            else
+              nil
+            end
+
+  default_message = default ? " Default[#{default}]" : nil
+  
+  while version.empty?
+    print "Specify version to deploy#{default_message}: "
+    version = $stdin.gets
+    if version.strip.empty?
+      version = default
+    end
+    if version.to_s.strip.empty?
+      puts "\nEnter a valid version\n"
+    end
+  end
 end
 
 nodes_file = ARGV.shift.to_s.strip

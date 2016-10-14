@@ -12,7 +12,7 @@ class ErrorHandler extends HttpErrorHandler with Errors {
 
   def onClientError(request: RequestHeader, statusCode: Int, message: String) = {
     val errorId = generateErrorId()
-    Logger.warn(s"[proxy] Client Error $errorId path[${request.path}] status[$statusCode]: $message")
+    Logger.warn(s"[proxy] FlowError Client Error $errorId path[${request.path}] status[$statusCode]: $message")
     Future.successful(
       Status(statusCode)(clientErrors(Seq(s"A client error occurred: $message")))
     )

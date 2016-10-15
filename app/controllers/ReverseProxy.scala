@@ -5,10 +5,11 @@ import io.flow.common.v0.models.UserReference
 import io.flow.token.v0.{Client => TokenClient}
 import io.flow.organization.v0.{Client => OrganizationClient}
 import io.flow.organization.v0.models.Membership
-import io.flow.token.v0.models.TokenAuthenticationForm
+import io.flow.token.v0.models._
 import java.util.UUID
 import javax.inject.{Inject, Singleton}
-import lib.{ApidocServicesFetcher, Authorization, AuthorizationParser, Config, Constants, Index, FlowAuth, FlowAuthData, Operation, Route, Server, ProxyConfigFetcher}
+import lib.{ApidocServicesFetcher, Authorization, AuthorizationParser, Config, Constants, Index, FlowAuth, FlowAuthData}
+import lib.{Operation, ResolvedToken, Route, Server, ProxyConfigFetcher}
 import play.api.Logger
 import play.api.libs.json.Json
 import play.api.mvc._
@@ -72,7 +73,7 @@ class ReverseProxy @Inject () (
 
     authorizationParser.parse(request.headers.get("Authorization")) match {
       case Authorization.NoCredentials => {
-        proxyPostAuth(requestId, request, userId = None)
+        proxyPostAuth(requestId, request, token = None)
       }
 
       case Authorization.Unrecognized => Future(
@@ -96,14 +97,23 @@ class ReverseProxy @Inject () (
           case None => Future(
             unauthorized(s"API Token is not valid")
           )
-          case Some(user) => {
-            proxyPostAuth(requestId, request, userId = Some(user.id))
+          case Some(token) => {
+            val resolvedToken = token match {
+              case t: LegacyTokenReference => Some(ResolvedToken(userId = t.user.id))
+              case t: OrganizationTokenReference => Some(ResolvedToken(userId = t.user.id, organizationId = Some(t.organization.id)))
+              case t: PartnerTokenReference => Some(ResolvedToken(userId = t.user.id, partnerId = Some(t.partner.id)))
+              case TokenReferenceUndefinedType(other) => {
+                Logger.warn(s"[proxy] TokenReferenceUndefinedType($other) - proceeding as unauthenticated")
+                None
+              }
+            }
+            proxyPostAuth(requestId, request, token = resolvedToken)
           }
         }
       }
 
       case Authorization.User(userId) => {
-        proxyPostAuth(requestId, request, userId = Some(userId))
+        proxyPostAuth(requestId, request, token = Some(ResolvedToken(userId = userId)))
       }
     }
   }
@@ -111,7 +121,7 @@ class ReverseProxy @Inject () (
   private[this] def proxyPostAuth(
     requestId: String,
     request: Request[RawBuffer],
-    userId: Option[String]
+    token: Option[ResolvedToken]
   ): Future[Result] = {
     // If we have a callback param indicated JSONP, respect the method parameter as well
     val method = request.queryString.get("callback") match {
@@ -119,7 +129,7 @@ class ReverseProxy @Inject () (
       case Some(_) => request.queryString.get("method").getOrElse(Nil).headOption.map(_.toUpperCase).getOrElse(request.method)
     }
 
-    resolve(requestId, method, request, userId).flatMap { result =>
+    resolve(requestId, method, request, token).flatMap { result =>
       result match {
         case Left(result) => Future(result)
 
@@ -130,27 +140,25 @@ class ReverseProxy @Inject () (
                 requestId,
                 request,
                 operation.route,
-                userId.map { uid =>
-                  FlowAuthData.user(requestId, uid)
+                token.map { t =>
+                  FlowAuthData.fromToken(requestId, t)
                 }
               )
             }
 
             case Some(org) => {
-              userId match {
+              token match {
                 case None => {
                   lookup(operation.server.name).proxy(
                     requestId,
                     request,
                     operation.route,
-                    userId.map { uid =>
-                      FlowAuthData.user(requestId, uid)
-                    }
+                    None
                   )
                 }
 
-                case Some(uid) => {
-                  resolveOrganizationAuthorization(requestId, uid, org).flatMap {
+                case Some(t) => {
+                  resolveOrganizationAuthorization(requestId, t, org).flatMap {
                     case None => Future(
                       unauthorized(s"Not authorized to access $org or the organization does not exist")
                     )
@@ -188,7 +196,7 @@ class ReverseProxy @Inject () (
     requestId: String,
     method: String,
     request: Request[RawBuffer],
-    userId: Option[String]
+    token: Option[ResolvedToken]
   ): Future[Either[Result, Operation]] = {
     val path = request.path
     val serverNameOverride: Option[String] = request.headers.get(Constants.Headers.FlowServer)
@@ -209,15 +217,15 @@ class ReverseProxy @Inject () (
       }
 
       case false => {
-        userId match {
+        token match {
           case None => Future(
             Left(
               unauthorized(s"Must authenticate to specify[${Constants.Headers.FlowServer} or ${Constants.Headers.FlowHost}]")
             )
           )
 
-          case Some(uid) => {
-            resolveOrganizationAuthorization(requestId, uid, Constants.FlowOrganizationId).map {
+          case Some(t) => {
+            resolveOrganizationAuthorization(requestId, t, Constants.FlowOrganizationId).map {
               case None => {
                 Left(
                   unauthorized(s"Not authorized to access organization[${Constants.FlowOrganizationId}]")
@@ -303,12 +311,13 @@ class ReverseProxy @Inject () (
     * Queries token server to check if the specified token is a known
     * valid token.
     */
-  private[this] def resolveToken(requestId: String, token: String): Future[Option[UserReference]] = {
+  private[this] def resolveToken(requestId: String, token: String): Future[Option[TokenReference]] = {
     tokenClient.tokens.postAuthentications(
       TokenAuthenticationForm(token = token),
       requestHeaders = requestIdHeader(requestId)
-    ).map { t =>
-      Some(t.user)
+    ).map { tokenReference =>
+      Some(tokenReference)
+
     }.recover {
       case io.flow.token.v0.errors.UnitResponse(404) => {
         None
@@ -326,22 +335,22 @@ class ReverseProxy @Inject () (
     */
   private[this] def resolveOrganizationAuthorization(
     requestId: String,
-    userId: String,
+    token: ResolvedToken,
     organization: String
   ): Future[Option[FlowAuthData]] = {
     organizationClient.organizationAuthorizations.getByOrganization(
       organization = organization,
       requestHeaders = requestIdHeader(requestId) ++ Seq(
-        Constants.Headers.FlowAuth -> flowAuth.jwt(FlowAuthData.user(requestId, userId))
+        Constants.Headers.FlowAuth -> flowAuth.jwt(FlowAuthData.fromToken(requestId, token))
       )
     ).map { orgAuth =>
       Some(
-        FlowAuthData.org(requestId, userId, organization, orgAuth)
+        FlowAuthData.org(requestId, token.copy(organizationId = Some(organization)), orgAuth)
       )
 
     }.recover {
       case io.flow.organization.v0.errors.UnitResponse(401) => {
-        Logger.warn(s"User[$userId] was not authorized to GET /organization-authorizations/$organization")
+        Logger.warn(s"Token[$token] was not authorized to GET /organization-authorizations/$organization")
         None
       }
       case ex: Throwable => {

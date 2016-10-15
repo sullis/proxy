@@ -11,10 +11,10 @@ object FlowAuthData {
   /**
    * Creates a flow auth data object with only the user id
    */
-  def user(requestId: String, userId: String) = FlowAuthData(
+  def fromToken(requestId: String, token: ResolvedToken) = FlowAuthData(
     requestId = requestId,
-    userId = userId,
-    organization = None,
+    userId = token.userId,
+    organization = token.organizationId,
     role = None,
     environment = None
   )
@@ -22,14 +22,14 @@ object FlowAuthData {
   /**
    * Creates a flow auth data object for the user and org
    */
-  def org(requestId: String, userId: String, organization: String, orgAuth: OrganizationAuthorization) = FlowAuthData(
+  def org(requestId: String, token: ResolvedToken, orgAuth: OrganizationAuthorization) = FlowAuthData(
     requestId = requestId,
-    userId = userId,
-    organization = Some(organization),
+    userId = token.userId,
+    organization = token.organizationId,
     role = Some(orgAuth.role.toString),
     environment = Some(orgAuth.environment.toString)
   )
-  
+
 }
 
 case class FlowAuthData(

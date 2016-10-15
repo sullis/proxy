@@ -14,8 +14,9 @@ class FlowAuthSpec extends PlaySpec with OneServerPerSuite {
 
   private[this] val requestId = UUID.randomUUID.toString
 
-  "FlowAuthData.user" in {
-    FlowAuthData.user(requestId, "5") must be(
+  "FlowAuthData.token" in {
+    val token = ResolvedToken(userId = "5")
+    FlowAuthData.fromToken(requestId, token) must be(
       FlowAuthData(
         requestId = requestId,
         userId = "5",
@@ -27,7 +28,8 @@ class FlowAuthSpec extends PlaySpec with OneServerPerSuite {
   }
 
   "FlowAuthData.org" in {
-    FlowAuthData.org(requestId, "5", "tst", OrganizationAuthorization(role = Role.Member, environment = Environment.Production)) must be(
+    val token = ResolvedToken(userId = "5", organizationId = Some("tst"))
+    FlowAuthData.org(requestId, token, OrganizationAuthorization(role = Role.Member, environment = Environment.Production)) must be(
       FlowAuthData(
         requestId = requestId,
         userId = "5",

@@ -811,7 +811,8 @@ package io.flow.organization.v0 {
         _executeRequest("POST", s"/organization-authorizations", body = Some(payload), requestHeaders = requestHeaders).map {
           case r if r.status == 200 => _root_.io.flow.organization.v0.Client.parseJson("io.flow.organization.v0.models.OrganizationAuthorization", r, _.validate[io.flow.organization.v0.models.OrganizationAuthorization])
           case r if r.status == 401 => throw new io.flow.organization.v0.errors.UnitResponse(r.status)
-          case r => throw new io.flow.organization.v0.errors.FailedRequest(r.status, s"Unsupported response code[${r.status}]. Expected: 200, 401")
+          case r if r.status == 422 => throw new io.flow.organization.v0.errors.GenericErrorResponse(r)
+          case r => throw new io.flow.organization.v0.errors.FailedRequest(r.status, s"Unsupported response code[${r.status}]. Expected: 200, 401, 422")
         }
       }
     }

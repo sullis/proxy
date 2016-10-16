@@ -1,11 +1,11 @@
 package controllers
 
 import akka.actor.ActorSystem
-import io.flow.common.v0.models.UserReference
+import io.flow.common.v0.models.{Environment, UserReference}
 import io.flow.token.v0.{Client => TokenClient}
 import io.flow.organization.v0.{Client => OrganizationClient}
 import io.flow.organization.v0.models.Membership
-import io.flow.token.v0.models._
+import io.flow.token.v0.models.{TokenAuthenticationForm, TokenReference}
 import java.util.UUID
 import javax.inject.{Inject, Singleton}
 import lib.{ApidocServicesFetcher, Authorization, AuthorizationParser, Config, Constants, Index, FlowAuth, FlowAuthData}
@@ -98,22 +98,13 @@ class ReverseProxy @Inject () (
             unauthorized(s"API Token is not valid")
           )
           case Some(token) => {
-            val resolvedToken = token match {
-              case t: LegacyTokenReference => Some(ResolvedToken(userId = t.user.id))
-              case t: OrganizationTokenReference => Some(ResolvedToken(userId = t.user.id, organizationId = Some(t.organization.id)))
-              case t: PartnerTokenReference => Some(ResolvedToken(userId = t.user.id, partnerId = Some(t.partner.id)))
-              case TokenReferenceUndefinedType(other) => {
-                Logger.warn(s"[proxy] TokenReferenceUndefinedType($other) - proceeding as unauthenticated")
-                None
-              }
-            }
-            proxyPostAuth(requestId, request, token = resolvedToken)
+            proxyPostAuth(requestId, request, token = ResolvedToken.fromToken(token))
           }
         }
       }
 
       case Authorization.User(userId) => {
-        proxyPostAuth(requestId, request, token = Some(ResolvedToken(userId = userId)))
+        proxyPostAuth(requestId, request, token = Some(ResolvedToken.fromUser(userId)))
       }
     }
   }

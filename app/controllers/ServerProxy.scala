@@ -16,7 +16,7 @@ import play.api.mvc._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 import play.api.http.HttpEntity
-import lib.{Constants, FlowAuth, FlowAuthData, Route, Server}
+import lib.{Constants, FlowAuth, ResolvedToken, Route, Server}
 import play.api.libs.json.{JsArray, JsValue, Json}
 
 case class ServerProxyDefinition(
@@ -46,7 +46,7 @@ trait ServerProxy {
     requestId: String,
     request: Request[RawBuffer],
     route: Route,
-    auth: Option[FlowAuthData]
+    token: Option[ResolvedToken]
   ): Future[play.api.mvc.Result]
 
 }
@@ -139,17 +139,17 @@ class ServerProxyImpl @Inject () (
     requestId: String,
     request: Request[RawBuffer],
     route: Route,
-    auth: Option[FlowAuthData]
+    token: Option[ResolvedToken]
   ) = {
     Logger.info(s"[proxy] ${request.method} ${request.path} to [${definition.server.name}] ${route.method} ${definition.server.host}${request.path} requestId $requestId")
 
     request.queryString.get("callback").getOrElse(Nil).headOption match {
       case Some(callback) => {
-        jsonp(requestId, callback, request, route, auth)
+        jsonp(requestId, callback, request, route, token)
       }
 
       case None => {
-        standard(requestId, route, request, auth)
+        standard(requestId, route, request, token)
       }
     }
   }
@@ -159,7 +159,7 @@ class ServerProxyImpl @Inject () (
     callback: String,
     request: Request[RawBuffer],
     route: Route,
-    auth: Option[FlowAuthData]
+    token: Option[ResolvedToken]
   ) = {
     val formData = FormData.toJson(request.queryString - "method" - "callback")
     definition.multiService.validate(route.method, route.path, formData) match {
@@ -170,7 +170,7 @@ class ServerProxyImpl @Inject () (
       }
 
       case Right(body) => {
-        val finalHeaders = setContentType(proxyHeaders(requestId, request.headers, request.method, auth), ApplicationJsonContentType)
+        val finalHeaders = setContentType(proxyHeaders(requestId, request.headers, request.method, token), ApplicationJsonContentType)
 
         val req = ws.url(definition.server.host + request.path)
           .withFollowRedirects(false)
@@ -212,9 +212,9 @@ class ServerProxyImpl @Inject () (
     requestId: String,
     route: Route,
     request: Request[RawBuffer],
-    auth: Option[FlowAuthData]
+    token: Option[ResolvedToken]
   ) = {
-    val finalHeaders = proxyHeaders(requestId, request.headers, request.method, auth)
+    val finalHeaders = proxyHeaders(requestId, request.headers, request.method, token)
     val originalQuery: Map[String, Seq[String]] = request.queryString
     val finalQuery: Seq[(String, String)] = ServerProxy.query(originalQuery)
 
@@ -370,7 +370,7 @@ class ServerProxyImpl @Inject () (
     requestId: String,
     headers: Headers,
     method: String,
-    authData: Option[FlowAuthData]
+    token: Option[ResolvedToken]
   ): Headers = {
 
     val headersToAdd = Seq(
@@ -381,8 +381,8 @@ class ServerProxyImpl @Inject () (
       Constants.Headers.ForwardedOrigin -> headers.get(Constants.Headers.Origin).getOrElse(""),
       Constants.Headers.ForwardedMethod -> method
     ) ++ Seq(
-      authData.map { data =>
-        Constants.Headers.FlowAuth -> flowAuth.jwt(data)
+      token.map { t =>
+        Constants.Headers.FlowAuth -> flowAuth.jwt(t)
       },
 
       (

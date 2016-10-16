@@ -1,59 +1,7 @@
 package lib
 
-import io.flow.organization.v0.models.OrganizationAuthorization
 import authentikat.jwt.{JwtClaimsSet, JwtHeader, JsonWebToken}
 import javax.inject.{Inject, Singleton}
-import org.joda.time.DateTime
-import org.joda.time.format.ISODateTimeFormat.dateTime
-
-object FlowAuthData {
-
-  /**
-   * Creates a flow auth data object with only the user id
-   */
-  def fromToken(requestId: String, token: ResolvedToken) = FlowAuthData(
-    requestId = requestId,
-    userId = token.userId,
-    organization = token.organizationId,
-    role = None,
-    environment = None
-  )
-
-  /**
-   * Creates a flow auth data object for the user and org
-   */
-  def org(requestId: String, token: ResolvedToken, orgAuth: OrganizationAuthorization) = FlowAuthData(
-    requestId = requestId,
-    userId = token.userId,
-    organization = token.organizationId,
-    role = Some(orgAuth.role.toString),
-    environment = Some(orgAuth.environment.toString)
-  )
-
-}
-
-case class FlowAuthData(
-  requestId: String,
-  userId: String,
-  organization: Option[String],
-  role: Option[String],
-  environment: Option[String]
-) {
-
-  private[lib] val createdAt = new DateTime()
-
-  def toMap(): Map[String, String] = {
-    Map(
-      "request_id" -> Some(requestId),
-      "user_id" -> Some(userId),
-      "created_at" -> Some(dateTime.print(createdAt)),
-      "organization" -> organization,
-      "role" -> role,
-      "environment" -> environment
-    ).flatMap { case (key, value) => value.map { v => (key -> v)} }
-  }
-
-}
 
 /**
   * Defines the data that goes into the flow auth set by the proxy server.
@@ -69,9 +17,9 @@ final class FlowAuth @Inject () (
     * Returns the string jwt token of the specified auth data.
     */
   def jwt(
-    authData: FlowAuthData
+    token: ResolvedToken
   ): String = {
-    val claimsSet = JwtClaimsSet(authData.toMap)
+    val claimsSet = JwtClaimsSet(token.toMap)
     JsonWebToken(header, claimsSet, config.jwtSalt)
   }
   

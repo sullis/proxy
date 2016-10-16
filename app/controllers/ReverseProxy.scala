@@ -8,7 +8,7 @@ import io.flow.organization.v0.models.Membership
 import io.flow.token.v0.models.{TokenAuthenticationForm, TokenReference}
 import java.util.UUID
 import javax.inject.{Inject, Singleton}
-import lib.{ApidocServicesFetcher, Authorization, AuthorizationParser, Config, Constants, Index, FlowAuth, FlowAuthData}
+import lib.{ApidocServicesFetcher, Authorization, AuthorizationParser, Config, Constants, Index, FlowAuth}
 import lib.{Operation, ResolvedToken, Route, Server, ProxyConfigFetcher}
 import play.api.Logger
 import play.api.libs.json.Json
@@ -98,13 +98,13 @@ class ReverseProxy @Inject () (
             unauthorized(s"API Token is not valid")
           )
           case Some(token) => {
-            proxyPostAuth(requestId, request, token = ResolvedToken.fromToken(token))
+            proxyPostAuth(requestId, request, token = ResolvedToken.fromToken(requestId, token))
           }
         }
       }
 
       case Authorization.User(userId) => {
-        proxyPostAuth(requestId, request, token = Some(ResolvedToken.fromUser(userId)))
+        proxyPostAuth(requestId, request, token = Some(ResolvedToken.fromUser(requestId, userId)))
       }
     }
   }
@@ -131,9 +131,7 @@ class ReverseProxy @Inject () (
                 requestId,
                 request,
                 operation.route,
-                token.map { t =>
-                  FlowAuthData.fromToken(requestId, t)
-                }
+                token
               )
             }
 
@@ -328,15 +326,19 @@ class ReverseProxy @Inject () (
     requestId: String,
     token: ResolvedToken,
     organization: String
-  ): Future[Option[FlowAuthData]] = {
+  ): Future[Option[ResolvedToken]] = {
+    println(s"Token org[${token.organizationId}] request org[$organization]")
+
     organizationClient.organizationAuthorizations.getByOrganization(
       organization = organization,
       requestHeaders = requestIdHeader(requestId) ++ Seq(
-        Constants.Headers.FlowAuth -> flowAuth.jwt(FlowAuthData.fromToken(requestId, token))
+        Constants.Headers.FlowAuth -> flowAuth.jwt(token)
       )
     ).map { orgAuth =>
       Some(
-        FlowAuthData.org(requestId, token.copy(organizationId = Some(organization)), orgAuth)
+        token.copy(
+          role = Some(orgAuth.role.toString)
+        )
       )
 
     }.recover {

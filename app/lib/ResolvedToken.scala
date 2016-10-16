@@ -1,40 +1,61 @@
 package lib
 
-import io.flow.common.v0.models.Environment
 import io.flow.token.v0.models._
+import org.joda.time.DateTime
+import org.joda.time.format.ISODateTimeFormat.dateTime
 import play.api.Logger
 
 case class ResolvedToken(
+  requestId: String,
   userId: String,
-  environment: Option[Environment] = None,
+  environment: Option[String] = None,
   organizationId: Option[String] = None,
-  partnerId: Option[String] = None
-)
+  partnerId: Option[String] = None,
+  role: Option[String] = None
+) {
+
+  private[lib] val createdAt = new DateTime()
+
+  def toMap(): Map[String, String] = {
+    Map(
+      "request_id" -> Some(requestId),
+      "user_id" -> Some(userId),
+      "created_at" -> Some(dateTime.print(createdAt)),
+      "organization" -> organizationId,
+      "partner" -> partnerId,
+      "role" -> role,
+      "environment" -> environment
+    ).flatMap { case (key, value) => value.map { v => (key -> v)} }
+  }
+  
+}
 
 object ResolvedToken {
 
-  def fromUser(userId: String): ResolvedToken = {
-    ResolvedToken(userId = userId)
+  def fromUser(requestId: String, userId: String): ResolvedToken = {
+    ResolvedToken(requestId, userId = userId)
   }
 
-  def fromToken(token: TokenReference): Option[ResolvedToken] = {
+  def fromToken(requestId: String, token: TokenReference): Option[ResolvedToken] = {
     token match {
       case t: LegacyTokenReference => Some(
-        ResolvedToken.fromUser(t.user.id)
+        ResolvedToken.fromUser(requestId, t.user.id)
       )
 
       case t: OrganizationTokenReference => Some(
         ResolvedToken(
+          requestId = requestId,
           userId = t.user.id,
-          environment = Some(t.environment),
+          environment = Some(t.environment.toString),
           organizationId = Some(t.organization.id)
         )
       )
 
       case t: PartnerTokenReference => Some(
         ResolvedToken(
+          requestId = requestId,
           userId = t.user.id,
-          environment = Some(t.environment),
+          environment = Some(t.environment.toString),
           partnerId = Some(t.partner.id)
         )
       )

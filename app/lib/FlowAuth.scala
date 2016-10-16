@@ -13,6 +13,15 @@ final class FlowAuth @Inject () (
 
   private[this] val header = JwtHeader("HS256")
 
+  def headers(
+    token: ResolvedToken
+  ): Seq[(String, String)] = {
+    Seq(
+      Constants.Headers.FlowRequestId -> token.requestId,
+      Constants.Headers.FlowAuth -> jwt(token)
+    )
+  }
+    
   /**
     * Returns the string jwt token of the specified auth data.
     */

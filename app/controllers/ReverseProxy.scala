@@ -4,7 +4,7 @@ import akka.actor.ActorSystem
 import io.flow.common.v0.models.{Environment, UserReference}
 import io.flow.token.v0.{Client => TokenClient}
 import io.flow.organization.v0.{Client => OrganizationClient}
-import io.flow.organization.v0.models.Membership
+import io.flow.organization.v0.models.{Membership, OrganizationAuthorizationForm}
 import io.flow.token.v0.models.{OrganizationTokenReference, TokenAuthenticationForm, TokenReference}
 import java.util.UUID
 import javax.inject.{Inject, Singleton}
@@ -330,10 +330,11 @@ class ReverseProxy @Inject () (
   ): Future[Option[ResolvedToken]] = {
     (token.environment, token.organizationId) match {
       case (Some(env), Some(orgId)) => {
-        println(s"Token org[$orgId] env[$env] request org[$organization]")
-
-        organizationClient.organizationAuthorizations.getByOrganization(
-          organization = organization,
+        organizationClient.organizationAuthorizations.post(
+          OrganizationAuthorizationForm(
+            organization = organization,
+            environment = Environment(env)
+          ),
           requestHeaders = flowAuth.headers(token)
         ).map { orgAuth =>
           Some(
@@ -344,11 +345,11 @@ class ReverseProxy @Inject () (
         }
       }.recover {
         case io.flow.organization.v0.errors.UnitResponse(401) => {
-          Logger.warn(s"Token[$token] was not authorized to GET /organization-authorizations/$organization")
+          Logger.warn(s"Token[$token] was not authorized for organization[$orgId] env[$env]")
           None
         }
         case ex: Throwable => {
-          sys.error(s"Could not communicate with organization server at[${organizationClient.baseUrl}]: $ex")
+          sys.error(s"Could not communicate with organization server at[${organizationClient.baseUrl}]: ${ex.getMessage}")
         }
       }
 

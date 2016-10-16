@@ -1,14 +1,15 @@
 package controllers
 
 import akka.actor.ActorSystem
-import io.flow.common.v0.models.UserReference
+import io.flow.common.v0.models.{Environment, UserReference}
 import io.flow.token.v0.{Client => TokenClient}
 import io.flow.organization.v0.{Client => OrganizationClient}
-import io.flow.organization.v0.models.Membership
-import io.flow.token.v0.models.TokenAuthenticationForm
+import io.flow.organization.v0.models.{Membership, OrganizationAuthorizationForm}
+import io.flow.token.v0.models.{OrganizationTokenReference, TokenAuthenticationForm, TokenReference}
 import java.util.UUID
 import javax.inject.{Inject, Singleton}
-import lib.{ApidocServicesFetcher, Authorization, AuthorizationParser, Config, Constants, Index, FlowAuth, FlowAuthData, Operation, Route, Server, ProxyConfigFetcher}
+import lib.{ApidocServicesFetcher, Authorization, AuthorizationParser, Config, Constants, Index, FlowAuth}
+import lib.{Operation, ResolvedToken, Route, Server, ProxyConfigFetcher}
 import play.api.Logger
 import play.api.libs.json.Json
 import play.api.mvc._
@@ -72,7 +73,7 @@ class ReverseProxy @Inject () (
 
     authorizationParser.parse(request.headers.get("Authorization")) match {
       case Authorization.NoCredentials => {
-        proxyPostAuth(requestId, request, userId = None)
+        proxyPostAuth(requestId, request, token = None)
       }
 
       case Authorization.Unrecognized => Future(
@@ -96,14 +97,14 @@ class ReverseProxy @Inject () (
           case None => Future(
             unauthorized(s"API Token is not valid")
           )
-          case Some(user) => {
-            proxyPostAuth(requestId, request, userId = Some(user.id))
+          case Some(token) => {
+            proxyPostAuth(requestId, request, token = ResolvedToken.fromToken(requestId, token))
           }
         }
       }
 
       case Authorization.User(userId) => {
-        proxyPostAuth(requestId, request, userId = Some(userId))
+        proxyPostAuth(requestId, request, token = Some(ResolvedToken.fromUser(requestId, userId)))
       }
     }
   }
@@ -111,7 +112,7 @@ class ReverseProxy @Inject () (
   private[this] def proxyPostAuth(
     requestId: String,
     request: Request[RawBuffer],
-    userId: Option[String]
+    token: Option[ResolvedToken]
   ): Future[Result] = {
     // If we have a callback param indicated JSONP, respect the method parameter as well
     val method = request.queryString.get("callback") match {
@@ -119,7 +120,7 @@ class ReverseProxy @Inject () (
       case Some(_) => request.queryString.get("method").getOrElse(Nil).headOption.map(_.toUpperCase).getOrElse(request.method)
     }
 
-    resolve(requestId, method, request, userId).flatMap { result =>
+    resolve(requestId, method, request, token).flatMap { result =>
       result match {
         case Left(result) => Future(result)
 
@@ -130,37 +131,33 @@ class ReverseProxy @Inject () (
                 requestId,
                 request,
                 operation.route,
-                userId.map { uid =>
-                  FlowAuthData.user(requestId, uid)
-                }
+                token
               )
             }
 
             case Some(org) => {
-              userId match {
+              token match {
                 case None => {
                   lookup(operation.server.name).proxy(
                     requestId,
                     request,
                     operation.route,
-                    userId.map { uid =>
-                      FlowAuthData.user(requestId, uid)
-                    }
+                    None
                   )
                 }
 
-                case Some(uid) => {
-                  resolveOrganizationAuthorization(requestId, uid, org).flatMap {
+                case Some(t) => {
+                  resolveOrganizationAuthorization(t, org).flatMap {
                     case None => Future(
                       unauthorized(s"Not authorized to access $org or the organization does not exist")
                     )
 
-                    case Some(auth) => {
+                    case Some(orgToken) => {
                       lookup(operation.server.name).proxy(
                         requestId,
                         request,
                         operation.route,
-                        Some(auth)
+                        Some(orgToken)
                       )
                     }
                   }
@@ -188,7 +185,7 @@ class ReverseProxy @Inject () (
     requestId: String,
     method: String,
     request: Request[RawBuffer],
-    userId: Option[String]
+    token: Option[ResolvedToken]
   ): Future[Either[Result, Operation]] = {
     val path = request.path
     val serverNameOverride: Option[String] = request.headers.get(Constants.Headers.FlowServer)
@@ -209,15 +206,15 @@ class ReverseProxy @Inject () (
       }
 
       case false => {
-        userId match {
+        token match {
           case None => Future(
             Left(
               unauthorized(s"Must authenticate to specify[${Constants.Headers.FlowServer} or ${Constants.Headers.FlowHost}]")
             )
           )
 
-          case Some(uid) => {
-            resolveOrganizationAuthorization(requestId, uid, Constants.FlowOrganizationId).map {
+          case Some(t) => {
+            resolveOrganizationAuthorization(t, Constants.FlowOrganizationId).map {
               case None => {
                 Left(
                   unauthorized(s"Not authorized to access organization[${Constants.FlowOrganizationId}]")
@@ -303,12 +300,15 @@ class ReverseProxy @Inject () (
     * Queries token server to check if the specified token is a known
     * valid token.
     */
-  private[this] def resolveToken(requestId: String, token: String): Future[Option[UserReference]] = {
+  private[this] def resolveToken(requestId: String, token: String): Future[Option[TokenReference]] = {
     tokenClient.tokens.postAuthentications(
       TokenAuthenticationForm(token = token),
-      requestHeaders = requestIdHeader(requestId)
-    ).map { t =>
-      Some(t.user)
+      requestHeaders = Seq(
+        Constants.Headers.FlowRequestId -> requestId
+      )
+    ).map { tokenReference =>
+      Some(tokenReference)
+
     }.recover {
       case io.flow.token.v0.errors.UnitResponse(404) => {
         None
@@ -325,32 +325,38 @@ class ReverseProxy @Inject () (
     * organization and also pulls the organization's environment.
     */
   private[this] def resolveOrganizationAuthorization(
-    requestId: String,
-    userId: String,
+    token: ResolvedToken,
     organization: String
-  ): Future[Option[FlowAuthData]] = {
-    organizationClient.organizationAuthorizations.getByOrganization(
-      organization = organization,
-      requestHeaders = requestIdHeader(requestId) ++ Seq(
-        Constants.Headers.FlowAuth -> flowAuth.jwt(FlowAuthData.user(requestId, userId))
-      )
-    ).map { orgAuth =>
-      Some(
-        FlowAuthData.org(requestId, userId, organization, orgAuth)
-      )
-
-    }.recover {
-      case io.flow.organization.v0.errors.UnitResponse(401) => {
-        Logger.warn(s"User[$userId] was not authorized to GET /organization-authorizations/$organization")
-        None
+  ): Future[Option[ResolvedToken]] = {
+    (token.environment, token.organizationId) match {
+      case (Some(env), Some(orgId)) => {
+        organizationClient.organizationAuthorizations.post(
+          OrganizationAuthorizationForm(
+            organization = organization,
+            environment = Environment(env)
+          ),
+          requestHeaders = flowAuth.headers(token)
+        ).map { orgAuth =>
+          Some(
+            token.copy(
+              role = Some(orgAuth.role.toString)
+            )
+          )
+        }
+      }.recover {
+        case io.flow.organization.v0.errors.UnitResponse(401) => {
+          Logger.warn(s"Token[$token] was not authorized for organization[$orgId] env[$env]")
+          None
+        }
+        case ex: Throwable => {
+          sys.error(s"Could not communicate with organization server at[${organizationClient.baseUrl}]: ${ex.getMessage}")
+        }
       }
-      case ex: Throwable => {
-        sys.error(s"Could not communicate with organization server at[${organizationClient.baseUrl}]: $ex")
+
+      case (_, _) => {
+        Future(None)
       }
     }
   }
 
-  private[this] def requestIdHeader(requestId: String) = Seq(
-    Constants.Headers.FlowRequestId -> requestId
-  )
 }

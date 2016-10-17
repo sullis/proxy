@@ -339,6 +339,7 @@ class ReverseProxy @Inject () (
         ).map { orgAuth =>
           Some(
             token.copy(
+              organizationId = Some(organization),
               role = Some(orgAuth.role.toString)
             )
           )

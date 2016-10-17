@@ -1,7 +1,7 @@
 package controllers
 
 import akka.actor.ActorSystem
-import io.flow.common.v0.models.{Environment, UserReference}
+import io.flow.common.v0.models.{Environment, Organization, Role, UserReference}
 import io.flow.token.v0.{Client => TokenClient}
 import io.flow.organization.v0.{Client => OrganizationClient}
 import io.flow.organization.v0.models.{Membership, OrganizationAuthorizationForm}
@@ -355,7 +355,43 @@ class ReverseProxy @Inject () (
       }
 
       case (_, _) => {
-        Future(None)
+        // Fetch the environment from organization and use that in the token.
+        getOrganizationById(token, organization).map {
+          case None => None
+          case Some(org) => {
+            Some(
+              token.copy(
+                organizationId = Some(organization),
+                environment = Some(org.environment.toString),
+                role = Some(Role.Member.toString) // TODO
+              )
+            )
+          }
+        }
+      }
+    }
+  }
+
+  private[this] def getOrganizationById(
+    token: ResolvedToken,
+    organization: String
+  ): Future[Option[Organization]] = {
+    organizationClient.organizations.getById(
+      id = organization,
+      requestHeaders = flowAuth.headers(token)
+    ).map { org =>
+      Some(org)
+    }.recover {
+      case io.flow.organization.v0.errors.UnitResponse(401) => {
+        Logger.warn(s"Token[$token] was not authorized to getOrganizationById($organization)")
+        None
+      }
+      case io.flow.organization.v0.errors.UnitResponse(404) => {
+        Logger.warn(s"Token[$token] organization[$organization] not found")
+        None
+      }
+      case ex: Throwable => {
+        sys.error(s"Could not communicate with organization server at[${organizationClient.baseUrl}]: ${ex.getMessage}")
       }
     }
   }

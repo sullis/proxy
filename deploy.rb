@@ -82,7 +82,7 @@ def wait(timeout_seconds = 50, &check_function)
     
     duration = Time.now - started_at
     if i % 10 == 0 && i > 0
-      puts " (#{duration} seconds)"
+      puts " (#{duration.to_i} seconds)"
       print "    "
     end
 

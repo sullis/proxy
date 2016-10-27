@@ -71,44 +71,60 @@ def deploy(node, version)
   end
 end
 
-def wait_for_healthcheck(uri, timeout_seconds=50, sleep_between_interval_seconds=1, started_at=Time.now)
-  url = URI.parse(uri)
-  req = Net::HTTP::Get.new(url.to_s)
+def wait(timeout_seconds = 50, &check_function)
+  sleep_between_interval_seconds = 1
+  started_at = Time.now
 
-  puts "  - Checking health: #{uri}"  
-  body = begin
-           res = Net::HTTP.start(url.host, url.port) {|http|
-             http.request(req)
-           }
-           res.body.strip
-         rescue Exception => e
-           nil
-         end
+  0.upto(timeout_seconds-1) do |i|
+    if check_function.call
+      return
+    end
+    
+    if i % 10 == 0 && i > 0
+      puts " (#{timeout_seconds - i})"
+      print "    "
+    end
 
-  if body && body.match(/healthy/)
-    puts "  - healthy"
-  else
     duration = Time.now - started_at
     if duration > timeout_seconds
       puts "ERROR: Timeout exceeded[%s seconds] waiting for healthcheck: %s" % [timeout_seconds, uri]
       exit(1)
     end
-  
-    puts "  - waiting for healthcheck to succeed. timeout[%s seconds]. sleeping for %s seconds" % [timeout_seconds, sleep_between_interval_seconds]
-    sleep(sleep_between_interval_seconds)
 
-    wait_for_healthcheck(uri, timeout_seconds, sleep_between_interval_seconds, started_at)
+    if i == 0
+      print "    "
+    end
+    print "."
+    sleep(1)
   end
 end
 
+timeout = 50
 start = Time.now
 nodes.each do |node|
   puts node
   puts "  - Deploying version #{version}"
   deploy(node, version)
-  wait_for_healthcheck("http://#{node}:#{PORT}/_internal_/healthcheck")
+
+  uri = "http://#{node}:#{PORT}/_internal_/healthcheck"
+  url = URI.parse(uri)
+  req = Net::HTTP::Get.new(url.to_s)
+
+  puts  "  - Checking health: #{uri} (timeout #{timeout})"
+  wait(timeout) do
+    begin
+      res = Net::HTTP.start(url.host, url.port) {|http|
+        http.request(req)
+      }
+      res.body.strip.match(/healthy/)
+    rescue Exception => e
+      false
+    end
+  end
+
   puts ""
 end
 duration = Time.now - start
 
+puts ""
 puts "Proxy version %s deployed successfully. Total duration: %s seconds" % [version, duration.to_i]

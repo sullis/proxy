@@ -80,12 +80,12 @@ def wait(timeout_seconds = 50, &check_function)
       return
     end
     
+    duration = Time.now - started_at
     if i % 10 == 0 && i > 0
-      puts " (#{timeout_seconds - i})"
+      puts " (#{duration} seconds)"
       print "    "
     end
 
-    duration = Time.now - started_at
     if duration > timeout_seconds
       puts "ERROR: Timeout exceeded[%s seconds] waiting for healthcheck: %s" % [timeout_seconds, uri]
       exit(1)
@@ -110,7 +110,7 @@ nodes.each do |node|
   url = URI.parse(uri)
   req = Net::HTTP::Get.new(url.to_s)
 
-  puts  "  - Checking health: #{uri} (timeout #{timeout})"
+  puts  "  - Checking health: #{uri} (timeout #{timeout} seconds)"
   wait(timeout) do
     begin
       res = Net::HTTP.start(url.host, url.port) {|http|

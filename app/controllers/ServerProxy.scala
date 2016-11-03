@@ -157,7 +157,7 @@ class ServerProxyImpl @Inject () (
           }
           case Some(envelope) => {
             standardResponse.map { response =>
-              Ok(s"""{\n  "status": ${response.header.status.toString},\n  "body": ${response.toString}\n}""")
+              Ok(s"""{\n  "status": ${response.header.status.toString},\n  "body": ${response.body.dataStream.toString}\n}""")
             }
           }
         }

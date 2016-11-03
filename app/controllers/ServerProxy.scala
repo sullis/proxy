@@ -149,7 +149,18 @@ class ServerProxyImpl @Inject () (
       }
 
       case None => {
-        standard(requestId, route, request, token)
+        val standardResponse = standard(requestId, route, request, token)
+
+        request.queryString.get("envelope").getOrElse(Nil).headOption match {
+          case None => {
+            standardResponse
+          }
+          case Some(envelope) => {
+            standardResponse.map { response =>
+              Ok(s"""{\n  "status": ${response.header.status.toString},\n  "body": ${response.toString}\n}""")
+            }
+          }
+        }
       }
     }
   }

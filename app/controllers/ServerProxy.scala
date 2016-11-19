@@ -212,7 +212,7 @@ class ServerProxyImpl @Inject () (
       }
     }
 
-    definition.multiService.validate(route.method, route.path, formData) match {
+    definition.multiService.upcast(route.method, route.path, formData) match {
       case Left(errors) => {
         val envBody = envelopeBody(422, Map(), genericErrors(errors).toString)
         val finalBody = callback match {
@@ -299,7 +299,7 @@ class ServerProxyImpl @Inject () (
         val b: String = request.body.asBytes().get.decodeString("UTF-8")
         val newBody = FormData.toJson(FormData.parseEncoded(b))
 
-        definition.multiService.validate(route.method, route.path, newBody) match {
+        definition.multiService.upcast(route.method, route.path, newBody) match {
           case Left(errors) => {
             Logger.info(s"[proxy] ${request.method} $originalPathWithQuery 422 based on apidoc schema")
             Future(
@@ -339,7 +339,7 @@ class ServerProxyImpl @Inject () (
           }
 
           case Success(js) => {
-            definition.multiService.validate(route.method, route.path, js) match {
+            definition.multiService.upcast(route.method, route.path, js) match {
               case Left(errors) => {
                 Logger.info(s"[proxy] ${request.method} $originalPathWithQuery 422 based on apidoc schema")
                 Future(

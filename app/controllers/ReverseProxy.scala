@@ -251,8 +251,16 @@ class ReverseProxy @Inject () (
       case true => Future {
         index.resolve(method, path) match {
           case None => {
-            Logger.info(s"Unrecognized URL $method $path - returning 404")
-            Left(NotFound)
+            multiService.validate(method, path) match {
+              case Left(errors) => {
+                Logger.info(s"Unrecognized method $method for $path - returning 422 w/ available methods: $errors")
+                Left(UnprocessableEntity(genericErrors(errors)))
+              }
+              case Right(_) => {
+                Logger.info(s"Unrecognized URL $method $path - returning 404")
+                Left(NotFound)
+              }
+            }
           }
 
           case Some(operation) => {

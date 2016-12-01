@@ -59,16 +59,44 @@ case class DefaultCloudwatch @Inject()(config: Config, env: Environment) extends
     partner: Option[String] = None
   )(implicit ec: ExecutionContext) = {
     Future {
-      val dims = Map(
-        "server" -> server,
-        "method" -> method,
-        "path" -> path,
-        "response" -> response,
-        "organization" -> organization.getOrElse("none"),
-        "partner" -> partner.getOrElse("none")
-      ).map { d =>
-        new Dimension().withName(d._1).withValue(d._2.toString)
-      }.asJavaCollection
+      val dims = (organization, partner) match {
+        case (Some(o), Some(p)) => {
+          Map(
+            "server" -> server,
+            "method" -> method,
+            "path" -> path,
+            "response" -> response,
+            "organization" -> o,
+            "partner" -> p
+          ).map{d => new Dimension().withName(d._1).withValue(d._2.toString)}.asJavaCollection
+        }
+        case (None, Some(p)) => {
+          Map(
+            "server" -> server,
+            "method" -> method,
+            "path" -> path,
+            "response" -> response,
+            "partner" -> p
+          ).map{d => new Dimension().withName(d._1).withValue(d._2.toString)}.asJavaCollection
+        }
+        case (Some(o), None) => {
+          Map(
+            "server" -> server,
+            "method" -> method,
+            "path" -> path,
+            "response" -> response,
+            "organization" -> o
+          ).map{d => new Dimension().withName(d._1).withValue(d._2.toString)}.asJavaCollection
+        }
+        case _ => {
+          Map(
+            "server" -> server,
+            "method" -> method,
+            "path" -> path,
+            "response" -> response
+          ).map{d => new Dimension().withName(d._1).withValue(d._2.toString)}.asJavaCollection
+        }
+      }
 
       client.putMetricData(
         new PutMetricDataRequest()

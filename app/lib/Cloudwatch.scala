@@ -1,5 +1,11 @@
 package lib
 
+/*
+sudo su rm -fr /opt/SumoCollector/logs/*.log.*
+usermod -a -G docker plim; usermod -a -G docker mbryzek;
+service docker start
+*/
+
 import javax.inject.{Inject, Singleton}
 
 import play.api.inject.Module

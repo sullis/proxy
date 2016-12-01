@@ -64,8 +64,8 @@ case class DefaultCloudwatch @Inject()(config: Config, env: Environment) extends
         "method" -> method,
         "path" -> path,
         "response" -> response,
-        "organization" -> organization.getOrElse(""),
-        "partner" -> partner.getOrElse("")
+        "organization" -> organization.getOrElse("none"),
+        "partner" -> partner.getOrElse("none")
       ).map { d =>
         new Dimension().withName(d._1).withValue(d._2.toString)
       }.asJavaCollection

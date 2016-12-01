@@ -14,6 +14,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 object MetricName {
   val ResponseTime = "response.time"
+  val Value = "value"
 }
 
 class CloudwatchModule extends Module {
@@ -56,29 +57,33 @@ case class DefaultCloudwatch @Inject()(config: Config, env: Environment) extends
     response: Int,
     organization: Option[String] = None,
     partner: Option[String] = None
-  )(implicit ec: ExecutionContext) = Future {
-    val dims = Map(
-      "server" -> server,
-      "method" -> method,
-      "path" -> path,
-      "response" -> response,
-      "organization" -> organization.getOrElse(""),
-      "partner" -> partner.getOrElse("")
-    ).map { d =>
-      new Dimension().withName(d._1).withValue(d._2.toString)
-    }.asJavaCollection
+  )(implicit ec: ExecutionContext) = {
+    Future {
+      val dims = Map(
+        "server" -> server,
+        "method" -> method,
+        "path" -> path,
+        "response" -> response,
+        "organization" -> organization.getOrElse(""),
+        "partner" -> partner.getOrElse("")
+      ).map { d =>
+        new Dimension().withName(d._1).withValue(d._2.toString)
+      }.asJavaCollection
 
-    client.putMetricData(
-      new PutMetricDataRequest()
-        .withNamespace(MetricName.ResponseTime)
-        .withMetricData(
-          new MetricDatum()
-            .withMetricName(MetricName.ResponseTime)
-            .withUnit(StandardUnit.Milliseconds)
-            .withDimensions(dims)
-            .withValue(ms.toDouble)
-        )
-    )
+      client.putMetricData(
+        new PutMetricDataRequest()
+          .withNamespace(MetricName.ResponseTime)
+          .withMetricData(
+            new MetricDatum()
+              .withMetricName(MetricName.Value)
+              .withUnit(StandardUnit.Milliseconds)
+              .withDimensions(dims)
+              .withValue(ms.toDouble)
+          )
+      )
+    }.recover {
+      case e: Throwable => Logger.error(s"CloudwatchError Error calling cloudwatch: ${e.getMessage}")
+    }
   }
 }
 

@@ -1,8 +1,11 @@
 package lib
 
 import javax.inject.{Inject, Singleton}
+
 import play.api.inject.Module
 import io.flow.signalfx.v0.models.{Datapoint, DatapointForm}
+import io.flow.signalfx.v0.models.json._
+import play.api.libs.json.Json
 import play.api.{Configuration, Environment, Logger, Mode}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -63,22 +66,24 @@ case class DefaultSignalfx @Inject()(
       case (None, None) => baseDimensions
     }
 
-    signalfxClient.datapoints.post(
-      datapointForm = DatapointForm(
-        guage = Some(
-          Seq(
-            Datapoint(
-              metric = SignalfxMetricName.ResponseTime,
-              value = BigDecimal(ms),
-              dimensions = dimensions
-            )
+    val datapointForm = DatapointForm(
+      guage = Some(
+        Seq(
+          Datapoint(
+            metric = SignalfxMetricName.ResponseTime,
+            value = BigDecimal(ms),
+            dimensions = dimensions
           )
         )
-      ),
+      )
+    )
+
+    Logger.info(s"Signalfx request: ${Json.toJson(datapointForm)}")
+
+    signalfxClient.datapoints.post(
+      datapointForm = datapointForm,
       requestHeaders = Seq(("X-SF-TOKEN", token), ("Content-Type", "application/json"))
-    ).map { result =>
-      Logger.info(s"Signalfx Response: $result")
-    }.recover {
+    ).recover {
       case e: Throwable => Logger.error(s"SignalfxError Error calling signalfx: ${e.getMessage}")
     }
   }

@@ -75,7 +75,7 @@ case class DefaultSignalfx @Inject()(
           )
         )
       ),
-      requestHeaders = Seq(("X-SF-TOKEN", token))
+      requestHeaders = Seq(("X-SF-TOKEN", token), ("Content-Type", "application/json"))
     ).recover {
       case e: Throwable => Logger.error(s"SignalfxError Error calling cloudwatch: ${e.getMessage}")
     }

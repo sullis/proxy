@@ -15,8 +15,6 @@ class Bindings extends AbstractModule with AkkaGuiceSupport {
 object MetricActor {
   object Messages {
     case class Send(server: String, method: String, path: String, ms: Long, response: Int, organization: Option[String], partner: Option[String])
-    case class SendCloudwatch(server: String, method: String, path: String, ms: Long, response: Int, organization: Option[String], partner: Option[String])
-    case class SendSignalfx(server: String, method: String, path: String, ms: Long, response: Int, organization: Option[String], partner: Option[String])
   }
 }
 
@@ -32,15 +30,7 @@ class MetricActor @javax.inject.Inject() (
 
   def receive = akka.event.LoggingReceive {
     case msg @ MetricActor.Messages.Send(server, method, path, ms, response, organization, partner) => {
-      self ! MetricActor.Messages.SendCloudwatch(server, method, path, ms, response, organization, partner)
-      self ! MetricActor.Messages.SendSignalfx(server, method, path, ms, response, organization, partner)
-    }
-
-    case msg @ MetricActor.Messages.SendCloudwatch(server, method, path, ms, response, organization, partner) => {
       cloudwatch.recordResponseTime(server, method, path, ms, response, organization, partner)
-    }
-
-    case msg @ MetricActor.Messages.SendSignalfx(server, method, path, ms, response, organization, partner) => {
       signalfx.recordResponseTime(server, method, path, ms, response, organization, partner)
     }
 

@@ -1,9 +1,9 @@
 package lib
 
-import authentikat.jwt.{JsonWebToken, JwtClaimsSetJValue}
 import javax.inject.{Inject, Singleton}
-import org.apache.commons.codec.binary.Base64
-import play.api.Logger
+
+import authentikat.jwt.{JsonWebToken, JwtClaimsSetJValue}
+import org.apache.commons.codec.binary.{Base64, StringUtils}
 
 sealed trait Authorization
 
@@ -49,6 +49,7 @@ object Authorization {
     * Indicates valid user ID was parsed from JWT token
     */
   case class User(id: String) extends Authorization
+
 }
 
 /**
@@ -80,9 +81,10 @@ class AuthorizationParser @Inject() (
   def parse(headerValue: String): Authorization = {
     headerValue.split(" ").toList match {
       case "Basic" :: value :: Nil => {
-        new String(Base64.decodeBase64(value.getBytes)).split(":").toList match {
+
+        new String(Base64.decodeBase64(StringUtils.getBytesUsAscii(value))).split(":").toList match {
           case Nil => Authorization.InvalidApiToken
-          case token :: rest => Authorization.Token(token)
+          case token :: _ => Authorization.Token(token)
         }
       }
 
@@ -99,7 +101,7 @@ class AuthorizationParser @Inject() (
 
   private[this] def jwtIsValid(token: String): Boolean = JsonWebToken.validate(token, config.jwtSalt)
 
-  private[this] def parseJwtToken(claimsSet: JwtClaimsSetJValue): Authorization =
+  private[this] def parseJwtToken(claimsSet: JwtClaimsSetJValue): Authorization = {
     claimsSet.asSimpleMap.toOption match {
       case Some(claims) => {
         claims.get("id") match {
@@ -110,4 +112,6 @@ class AuthorizationParser @Inject() (
 
       case _ => Authorization.InvalidBearer
     }
+  }
+
 }

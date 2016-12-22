@@ -59,7 +59,7 @@ case class DefaultSignalfx @Inject()(
     val dimensions = (organization, partner) match {
       case (Some(o), Some(p)) => baseDimensions ++ Map("organization" -> o) ++ Map("partner" -> p)
       case (None, Some(p)) => baseDimensions ++ Map("partner" -> p)
-      case (Some(o), None) => baseDimensions ++ Map("partner" -> o)
+      case (Some(o), None) => baseDimensions ++ Map("organization" -> o)
       case (None, None) => baseDimensions
     }
 

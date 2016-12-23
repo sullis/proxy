@@ -78,8 +78,6 @@ case class DefaultSignalfx @Inject()(
       )
     )
 
-    Logger.info(s"Signalfx request: ${Json.toJson(datapointForm)}")
-
     signalfxClient.datapoints.post(
       datapointForm = datapointForm,
       requestHeaders = Seq(("X-SF-TOKEN", token), ("Content-Type", "application/json"))

@@ -34,7 +34,10 @@ class LoggingFilter @Inject() (implicit val mat: Materializer, ec: ExecutionCont
         s"${requestTime}ms",
         headerMap.getOrElse("User-Agent", Nil).mkString(","),
         headerMap.getOrElse("X-Forwarded-For", Nil).mkString(","),
-        headerMap.getOrElse("CF-Connecting-IP", Nil).mkString(",")
+        headerMap.getOrElse(
+          "CF-Connecting-IP",
+          headerMap.getOrElse("True-Client-IP", Nil)
+        ).mkString(",")
       ).mkString(" ")
 
       Logger.info(line)

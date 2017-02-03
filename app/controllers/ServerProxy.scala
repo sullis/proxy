@@ -477,7 +477,7 @@ class ServerProxyImpl @Inject () (
         Constants.Headers.FlowAuth -> flowAuth.jwt(t)
       },
 
-      headers.get("cf-connecting-ip").map { ip => // IP Address from cloudflare
+      clientIp(headers).map { ip =>
         Constants.Headers.FlowIp -> ip
       },
 
@@ -490,6 +490,16 @@ class ServerProxyImpl @Inject () (
     val cleanHeaders = Constants.Headers.namesToRemove.foldLeft(headers) { case (h, n) => h.remove(n) }
 
     headersToAdd.foldLeft(cleanHeaders) { case (h, addl) => h.add(addl) }
+  }
+
+  /**
+    * See https://support.cloudflare.com/hc/en-us/articles/200170986-How-does-CloudFlare-handle-HTTP-Request-headers-
+    */
+  private[this] def clientIp(headers: Headers): Option[String] = {
+    headers.get("cf-connecting-ip") match {
+      case None => headers.get("true-client-ip")
+      case Some(ip) => Some(ip)
+    }
   }
 
   private[this] def setContentType(

@@ -11,7 +11,8 @@ object LoggingUtil {
   private[this] val WhiteListByType = Map(
     "item_form" -> Set("number"),
     "harmonized_item_form" -> Set("number"),
-    "order_form" -> Set("number")
+    "order_form" -> Set("number"),
+    "order_put_form" -> Set("number")
   )
 
   /**
@@ -33,9 +34,11 @@ object LoggingUtil {
         JsObject(
           o.value.map { case (k, v) =>
             if (allFieldsToReplace.contains(k.toLowerCase.trim)) {
+              // TODO: This assumes that the type is a string for all replacements we make. Safe
+              // for now but would be better to NOT assume
               k -> JsString("x" * stringLength(v))
             } else {
-              k -> v
+              k -> safeJson(v)
             }
           }
         )

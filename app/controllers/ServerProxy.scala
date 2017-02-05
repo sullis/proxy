@@ -17,7 +17,7 @@ import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
 import play.api.http.HttpEntity
 import lib._
-import play.api.libs.json.{JsValue, Json}
+import play.api.libs.json.{JsObject, JsString, JsValue, Json}
 
 case class ServerProxyDefinition(
   server: Server,
@@ -240,6 +240,8 @@ class ServerProxyImpl @Inject () (
       }
     }
 
+    logFormData(route, formData)
+
     definition.multiService.upcast(route.method, route.path, formData) match {
       case Left(errors) => {
         val envBody = envelopeBody(422, Map(), genericErrors(errors).toString)
@@ -331,6 +333,8 @@ class ServerProxyImpl @Inject () (
         val b: String = request.body.asBytes().get.decodeString("UTF-8")
         val newBody = FormData.toJson(FormData.parseEncoded(b))
 
+        logFormData(route, newBody)
+
         definition.multiService.upcast(route.method, route.path, newBody) match {
           case Left(errors) => {
             Logger.info(s"[proxy] ${request.method} $originalPathWithQuery 422 based on apidoc schema")
@@ -371,6 +375,8 @@ class ServerProxyImpl @Inject () (
           }
 
           case Success(js) => {
+            logFormData(route, js)
+
             definition.multiService.upcast(route.method, route.path, js) match {
               case Left(errors) => {
                 Logger.info(s"[proxy] ${request.method} $originalPathWithQuery 422 based on apidoc schema")
@@ -527,5 +533,11 @@ class ServerProxyImpl @Inject () (
       case Success(v) => Some(v)
       case Failure(_) => None
     }
+  }
+
+  private[this] def logFormData(route: Route, body: JsValue): Unit = {
+    val typ = definition.multiService.bodyTypeFromPath(route.method, route.path)
+    val safeBody = LoggingUtil.safeJson(body, typ = typ)
+    Logger.info(s"${route.method} ${route.path} form body of type[${typ.getOrElse("unknown")}]: $safeBody")
   }
 }

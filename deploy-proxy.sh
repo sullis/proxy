@@ -18,5 +18,6 @@ set -x #echo on
 
 sudo docker stop `docker ps -q`;
 sudo docker rmi -f `docker images -q`;
-sudo rm -rf /var/lib/docker/containers/*
+sudo rm -rf /var/lib/docker/containers
+sudo mkdir /var/lib/docker/containers
 sudo docker run -d -p 7000:9000 flowvault/proxy:$1 production;

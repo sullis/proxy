@@ -40,4 +40,16 @@ class LoggingUtilSpec extends PlaySpec with OneServerPerSuite {
       Json.obj("number" -> "1234567890")
     )
   }
+
+  "safeJson with nested types" in {
+    LoggingUtil.safeJson(
+      Json.obj(
+        "items" -> Json.obj("number" -> "1234567890")
+      )
+    ) must equal(
+      Json.obj(
+        "items" -> Json.obj("number" -> "xxxxxxxxxx")
+      )
+    )
+  }
 }

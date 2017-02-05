@@ -1,6 +1,9 @@
 package lib
 
+import play.api.Logger
 import play.api.libs.json._
+
+import scala.annotation.tailrec
 
 object LoggingUtil {
 
@@ -33,9 +36,19 @@ object LoggingUtil {
       case o: JsObject => JsObject(
         o.value.map { case (k, v) =>
           if (allFieldsToReplace.contains(k.toLowerCase.trim)) {
-            // TODO: This assumes that the type is a string for all replacements we make. Safe
-            // for now but would be better to NOT assume
-            k -> JsString("x" * stringLength(v))
+            val redactedValue = v match {
+              case JsNull => JsNull
+              case _: JsBoolean => JsBoolean(false)
+              case _: JsString => JsString("x" * stringLength(v))
+              case _: JsNumber => JsNumber(123)
+              case _: JsArray => JsArray(Nil)
+              case _: JsObject => Json.obj()
+              case other => {
+                Logger.warn(s"Do not know how to redact values for json type[${v.getClass.getName}] - Returning empty json object")
+                Json.obj()
+              }
+            }
+            k -> redactedValue
           } else {
             k -> safeJson(v)
           }

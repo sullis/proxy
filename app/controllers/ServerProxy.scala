@@ -240,7 +240,7 @@ class ServerProxyImpl @Inject () (
       }
     }
 
-    logFormData(route, formData)
+    logFormData(request.path, requestId, route, formData)
 
     definition.multiService.upcast(route.method, route.path, formData) match {
       case Left(errors) => {
@@ -333,7 +333,7 @@ class ServerProxyImpl @Inject () (
         val b: String = request.body.asBytes().get.decodeString("UTF-8")
         val newBody = FormData.toJson(FormData.parseEncoded(b))
 
-        logFormData(route, newBody)
+        logFormData(request.path, requestId, route, newBody)
 
         definition.multiService.upcast(route.method, route.path, newBody) match {
           case Left(errors) => {
@@ -375,7 +375,7 @@ class ServerProxyImpl @Inject () (
           }
 
           case Success(js) => {
-            logFormData(route, js)
+            logFormData(request.path, requestId, route, js)
 
             definition.multiService.upcast(route.method, route.path, js) match {
               case Left(errors) => {
@@ -535,13 +535,13 @@ class ServerProxyImpl @Inject () (
     }
   }
 
-  private[this] def logFormData(route: Route, body: JsValue): Unit = {
+  private[this] def logFormData(requestId: String, requestPath: String, route: Route, body: JsValue): Unit = {
     body match {
       case j: JsObject => {
         if (j.fields.nonEmpty) {
           val typ = definition.multiService.bodyTypeFromPath(route.method, route.path)
           val safeBody = LoggingUtil.safeJson(body, typ = typ)
-          Logger.info(s"${route.method} ${route.path} form body of type[${typ.getOrElse("unknown")}]: $safeBody")
+          Logger.info(s"${route.method} $requestPath form body of type[${typ.getOrElse("unknown")}] requestId[$requestId]: $safeBody")
         }
       }
       case _ => // no-op

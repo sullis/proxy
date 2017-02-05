@@ -240,7 +240,7 @@ class ServerProxyImpl @Inject () (
       }
     }
 
-    logFormData(request.path, requestId, route, formData)
+    logFormData(requestId, request.path, route, formData)
 
     definition.multiService.upcast(route.method, route.path, formData) match {
       case Left(errors) => {
@@ -333,7 +333,7 @@ class ServerProxyImpl @Inject () (
         val b: String = request.body.asBytes().get.decodeString("UTF-8")
         val newBody = FormData.toJson(FormData.parseEncoded(b))
 
-        logFormData(request.path, requestId, route, newBody)
+        logFormData(requestId, request.path, route, newBody)
 
         definition.multiService.upcast(route.method, route.path, newBody) match {
           case Left(errors) => {
@@ -375,7 +375,7 @@ class ServerProxyImpl @Inject () (
           }
 
           case Success(js) => {
-            logFormData(request.path, requestId, route, js)
+            logFormData(requestId, request.path, route, js)
 
             definition.multiService.upcast(route.method, route.path, js) match {
               case Left(errors) => {

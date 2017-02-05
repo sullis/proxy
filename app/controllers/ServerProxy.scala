@@ -536,8 +536,15 @@ class ServerProxyImpl @Inject () (
   }
 
   private[this] def logFormData(route: Route, body: JsValue): Unit = {
-    val typ = definition.multiService.bodyTypeFromPath(route.method, route.path)
-    val safeBody = LoggingUtil.safeJson(body, typ = typ)
-    Logger.info(s"${route.method} ${route.path} form body of type[${typ.getOrElse("unknown")}]: $safeBody")
+    body match {
+      case j: JsObject => {
+        if (j.fields.nonEmpty) {
+          val typ = definition.multiService.bodyTypeFromPath(route.method, route.path)
+          val safeBody = LoggingUtil.safeJson(body, typ = typ)
+          Logger.info(s"${route.method} ${route.path} form body of type[${typ.getOrElse("unknown")}]: $safeBody")
+        }
+      }
+      case _ => // no-op
+    }
   }
 }

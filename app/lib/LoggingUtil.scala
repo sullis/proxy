@@ -5,7 +5,7 @@ import play.api.libs.json._
 object LoggingUtil {
 
   // All fields in this array will have their values redacted
-  private[this] val GlobalFieldsToReplace = Seq("cvv", "number")
+  private[this] val GlobalFieldsToReplace = Seq("cvv", "number", "token", "email", "password")
 
   // Map from apidoc model type to list of fields to whitelist
   private[this] val WhiteListByType = Map(

@@ -26,28 +26,26 @@ object LoggingUtil {
   ): JsValue = {
     val allFieldsToReplace = typ.flatMap(WhiteListByType.get) match {
       case None => GlobalFieldsToReplace
-      case Some(whitelist) => GlobalFieldsToReplace.filter { name => !whitelist.contains(name) }
+      case Some(whitelist) => GlobalFieldsToReplace.diff(whitelist)
     }
 
     body match {
-      case o: JsObject => {
-        JsObject(
-          o.value.map { case (k, v) =>
-            if (allFieldsToReplace.contains(k.toLowerCase.trim)) {
-              // TODO: This assumes that the type is a string for all replacements we make. Safe
-              // for now but would be better to NOT assume
-              k -> JsString("x" * stringLength(v))
-            } else {
-              k -> safeJson(v)
-            }
+      case o: JsObject => JsObject(
+        o.value.map { case (k, v) =>
+          if (allFieldsToReplace.contains(k.toLowerCase.trim)) {
+            // TODO: This assumes that the type is a string for all replacements we make. Safe
+            // for now but would be better to NOT assume
+            k -> JsString("x" * stringLength(v))
+          } else {
+            k -> safeJson(v)
           }
-        )
-      }
-      case a: JsArray => {
-        JsArray(
-          a.value.map { v => safeJson(v) }
-        )
-      }
+        }
+      )
+
+      case a: JsArray => JsArray(
+        a.value.map { v => safeJson(v) }
+      )
+
       case _ => body
     }
   }

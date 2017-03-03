@@ -1,6 +1,7 @@
 package lib
 
 import java.nio.charset.Charset
+import java.util.UUID
 
 import akka.util.ByteString
 import play.api.libs.json._
@@ -178,6 +179,10 @@ case class ProxyRequest(
     s"Method[$method] must be in uppercase, trimmed"
   )
 
+  val requestId: String = headers.get(Constants.Headers.FlowRequestId).getOrElse {
+    "api" + UUID.randomUUID.toString.replaceAll("-", "") // make easy to cut & paste
+  }
+
   /**
     * path is everything up to the ? - e.g. /users/
     */
@@ -269,7 +274,8 @@ case class ProxyRequest(
             requestPath = path,
             body = body,
             queryParameters = queryParameters ++ Map(
-              "method" -> Seq(method)
+              "method" -> Seq(method),
+              Constants.Headers.FlowRequestId -> Seq(requestId)
             ),
             headers = Headers(mapToSeq(headers): _*)
           )
@@ -294,10 +300,10 @@ case class ProxyRequest(
     }
   }
 
-  private[this] def mapToSeq(map: Map[String, Seq[String]]): Seq[(String, String)] = {
-    map.flatMap { case (k, values) =>
+  private[this] def mapToSeq(data: Map[String, Seq[String]]): Seq[(String, String)] = {
+    data.map { case (k, values) =>
       values.map { v => (k, v) }
-    }.toSeq
+    }.flatten.toSeq
   }
 
   /**

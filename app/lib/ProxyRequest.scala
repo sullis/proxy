@@ -48,7 +48,7 @@ object ProxyRequest {
 
   val ReservedQueryParameters = Seq("method", "callback", "envelope")
 
-  private[this] val ValidMethods = Seq("POST", "PUT", "PATCH", "DELETE")
+  private[this] val ValidMethods = Seq("GET", "POST", "PUT", "PATCH", "DELETE")
 
   def validate(request: Request[RawBuffer]): Either[Seq[String], ProxyRequest] = {
     validate(

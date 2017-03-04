@@ -223,7 +223,7 @@ case class ProxyRequest(
     }
   }
 
-  def queryParametersAsSeq(): Seq[(String, String)] = mapToSeq(queryParameters)
+  def queryParametersAsSeq(): Seq[(String, String)] = Util.toFlatSeq(queryParameters)
 
   /**
     * See https://support.cloudflare.com/hc/en-us/articles/200170986-How-does-CloudFlare-handle-HTTP-Request-headers-
@@ -277,7 +277,7 @@ case class ProxyRequest(
               "method" -> Seq(method),
               Constants.Headers.FlowRequestId -> Seq(requestId)
             ),
-            headers = Headers(mapToSeq(headers): _*)
+            headers = Headers(Util.toFlatSeq(headers): _*)
           )
           case errors => Left(Seq(s"Error in envelope request body: ${errors.mkString(", ")}"))
         }
@@ -296,19 +296,13 @@ case class ProxyRequest(
     if (responseEnvelope) {
       Ok(wrappedResponseBody(status, body, headers)).as("application/javascript; charset=utf-8")
     } else {
-      Status(status)(body).withHeaders(mapToSeq(headers): _*)
+      Status(status)(body).withHeaders(Util.toFlatSeq(headers): _*)
     }
   }
 
-  private[this] def mapToSeq(data: Map[String, Seq[String]]): Seq[(String, String)] = {
-    data.map { case (k, values) =>
-      values.map { v => (k, v) }
-    }.flatten.toSeq
-  }
-
   /**
-  * Wraps the specified response body based on the requested wrappers
-  */
+   * Wraps the specified response body based on the requested wrappers
+   */
   private[this] def wrappedResponseBody(status: Int, body: String, headers: Map[String,Seq[String]] = Map()): String = {
     val env = envelopeBody(status, body, headers)
     jsonpCallback.fold(env)(jsonpEnvelopeBody(_, env))

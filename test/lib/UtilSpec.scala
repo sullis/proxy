@@ -1,13 +1,13 @@
-package controllers
+package lib
 
 import org.scalatestplus.play._
 
-class ServerProxySpec extends PlaySpec with OneServerPerSuite {
+class UtilSpec extends PlaySpec with OneServerPerSuite {
 
-  "query" in {
-    ServerProxy.query(Map[String, Seq[String]]()) must be(Nil)
+  "toFlatSeq" in {
+    Util.toFlatSeq(Map[String, Seq[String]]()) must be(Nil)
 
-    val parts = ServerProxy.query(
+    val parts = Util.toFlatSeq(
       Map[String, Seq[String]](
         "foo" -> Seq("bar"),
         "foo2" -> Seq("baz")
@@ -19,7 +19,7 @@ class ServerProxySpec extends PlaySpec with OneServerPerSuite {
   }
 
   "query with multiple values" in {
-    val parts = ServerProxy.query(
+    val parts = Util.toFlatSeq(
       Map[String, Seq[String]](
         "foo" -> Seq("a", "b"),
         "foo2" -> Seq("c")
@@ -29,16 +29,6 @@ class ServerProxySpec extends PlaySpec with OneServerPerSuite {
     parts.contains(("foo", "b")) must be(true)
     parts.contains(("foo2", "c")) must be(true)
     parts.size must be(3)
-  }
-
-  "encoding" in {
-    val parts = ServerProxy.query(
-      Map[String, Seq[String]](
-        "q" -> Seq("category:shoes")
-      )
-    )
-    parts.size must be(1)
-    parts.contains(("q", "category:shoes")) must be(true)
   }
 
 }

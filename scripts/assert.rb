@@ -10,6 +10,12 @@ def assert_nil(value)
   end
 end
 
+def assert_not_nil(value)
+  if value.nil?
+    raise "expected value but got nil"
+  end
+end
+
 def assert_envelope(response)
   tests = [
     200 == response.status,

@@ -158,9 +158,9 @@ class Request
     @method = method
     @url = url
     @token = nil
-    @content_type = nil
     @path = nil
     @api_key = false
+    @headers = []
 
     if !File.exists?(api_key_path)
       raise "ERROR: File[#{api_key_path}] does not exist"
@@ -174,7 +174,16 @@ class Request
   end
 
   def with_content_type(ct)
-    @content_type = ct
+    with_header("Content-type", ct)
+    self
+  end
+
+  def with_authorization_header(value)
+    with_header("Authorization", value)
+  end
+
+  def with_header(name, value)
+    @headers << [name, value]
     self
   end
 
@@ -194,13 +203,13 @@ class Request
     if @method.upcase != "GET"
       params << "-X %s" % @method
     end
+
+    @headers.each do |pair|
+      params << "-H '%s: %s'" % [pair[0], pair[1]]
+    end
     
     if @api_key
       params << "-u `cat %s`:" % @api_key_path
-    end
-
-    if @content_type
-      params << "-H 'Content-type: %s'" % @content_type
     end
 
     if @path
@@ -211,7 +220,7 @@ class Request
     
     cmd = params.join(" ")
     ProxyGlobal.info(cmd)
-    #puts cmd
+    puts cmd
 
     tmpfile = ProxyGlobal.tmp_file_path
     if system(cmd + " > #{tmpfile}")
@@ -221,7 +230,7 @@ class Request
         body = results.sub(/\s*status\[(\d+)\]\s*/, '')
 
         r = Response.new(@method, @url, status, body)
-        if r.status >= 500 || r.status < 200 || (r.status >= 300 && @method.upcase == "GET")
+        if r.status >= 500 || r.status < 200
           msg =[]
           msg << "ERROR: HTTP %s for %s %s" % [r.status, @method, @url]
           msg << ""

@@ -40,9 +40,26 @@ assert_status(201, response)
 assert_equals(response.json['id'], id)
 org = response.json
 
+# Start session testing
 response = helpers.json_post("/organizations/#{id}?envelope=request", { :method => "GET" }).with_api_key.execute
-#puts response.inspect
-#exit(1)
+assert_unauthorized(response)
+
+response = helpers.json_post("/sessions", { :discriminator => "organization_session_form", :organization => id }).execute
+assert_status(201, response)
+session_id = response.json['id']
+assert_not_nil(session_id)
+
+response = helpers.get("/organizations/#{id}").execute
+assert_unauthorized(response)
+
+response = helpers.get("/organizations/#{id}").with_header("Authorization", "Session %s" % session_id).execute
+puts response.inspect
+exit(1)
+
+response = helpers.json_post("/organizations/#{id}?envelope=request", { :method => "GET", "headers" => { "session" => [session_id] } }).execute
+puts response.inspect
+
+exit(1)
 
 # Test unknown path and response envelopes
 response = helpers.json_post("/foo").execute

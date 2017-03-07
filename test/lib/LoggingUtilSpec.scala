@@ -12,7 +12,7 @@ class LoggingUtilSpec extends PlaySpec with OneServerPerSuite {
     LoggingUtil.safeJson(Json.obj("foo" -> "bar")) must equal(Json.obj("foo" -> "bar"))
 
     LoggingUtil.safeJson(Json.obj("foo" -> "bar", "cvv" -> "123", "number" -> "1234567890")) must equal(
-      Json.obj("foo" -> "bar", "cvv" -> "xxx", "number" -> "xxxxxxxxxx")
+      Json.obj("foo" -> "bar", "cvv" -> "xxx", "number" -> "xxx")
     )
 
     LoggingUtil.safeJson(
@@ -28,7 +28,7 @@ class LoggingUtilSpec extends PlaySpec with OneServerPerSuite {
         Seq(
           Json.obj("foo" -> "bar"),
           Json.obj("cvv" -> "xxx"),
-          Json.obj("number" -> "xxxxxxxxxx")
+          Json.obj("number" -> "xxx")
         )
       )
 
@@ -48,7 +48,7 @@ class LoggingUtilSpec extends PlaySpec with OneServerPerSuite {
       )
     ) must equal(
       Json.obj(
-        "items" -> Json.obj("number" -> "xxxxxxxxxx")
+        "items" -> Json.obj("number" -> "xxx")
       )
     )
   }

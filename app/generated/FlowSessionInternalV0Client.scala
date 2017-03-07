@@ -621,10 +621,10 @@ package io.flow.session.internal.v0 {
         val payload = play.api.libs.json.Json.toJson(sessionAuthorizationForm)
 
         _executeRequest("POST", s"/authorizations/sessions", body = Some(payload), requestHeaders = requestHeaders).map {
-          case r if r.status == 201 => _root_.io.flow.session.internal.v0.Client.parseJson("io.flow.session.internal.v0.models.SessionAuthorization", r, _.validate[io.flow.session.internal.v0.models.SessionAuthorization])
+          case r if r.status == 200 => _root_.io.flow.session.internal.v0.Client.parseJson("io.flow.session.internal.v0.models.SessionAuthorization", r, _.validate[io.flow.session.internal.v0.models.SessionAuthorization])
           case r if r.status == 401 => throw new io.flow.session.internal.v0.errors.UnitResponse(r.status)
           case r if r.status == 422 => throw new io.flow.session.internal.v0.errors.GenericErrorResponse(r)
-          case r => throw new io.flow.session.internal.v0.errors.FailedRequest(r.status, s"Unsupported response code[${r.status}]. Expected: 201, 401, 422")
+          case r => throw new io.flow.session.internal.v0.errors.FailedRequest(r.status, s"Unsupported response code[${r.status}]. Expected: 200, 401, 422")
         }
       }
     }

@@ -208,7 +208,7 @@ class ReverseProxy @Inject () (
       case Some(_) => {
         authorizeOrganization(token, organization).flatMap {
           case None => Future(
-            request.response(422, s"Not authorized to access $organization or the organization does not exist")
+            request.response(422, s"Not authorized to access '$organization' or the organization does not exist")
           )
 
           case Some(orgToken) => {

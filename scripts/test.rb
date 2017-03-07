@@ -6,7 +6,10 @@ require 'securerandom'
 load 'helpers.rb'
 load 'assert.rb'
 
-api_key_file = File.expand_path("~/.flow/token")
+PARENT_ORGANIZATION_ID = "flow"
+TEST_ORG_PREFIX = "proxy-test"
+
+api_key_file = File.expand_path("~/.flow/%s" % PARENT_ORGANIZATION_ID)
 if !File.exists?(api_key_file)
   puts "ERROR: Missing api key file: %s" % api_key_file
   exit(1)
@@ -14,9 +17,6 @@ end
 
 puts "logging to %s" % ProxyGlobal::LOG_FILE
 puts ""
-
-PARENT_ORGANIZATION_ID = "flow"
-TEST_ORG_PREFIX = "proxy-test"
 
 ## Deletes organizations with a given name prefix.
 ## Does not currently paginate
@@ -41,8 +41,8 @@ assert_equals(response.json['id'], id)
 org = response.json
 
 response = helpers.json_post("/organizations/#{id}?envelope=request", { :method => "GET" }).with_api_key.execute
-puts response.inspect
-exit(1)
+#puts response.inspect
+#exit(1)
 
 # Test unknown path and response envelopes
 response = helpers.json_post("/foo").execute

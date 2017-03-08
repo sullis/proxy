@@ -40,7 +40,7 @@ class ReverseProxy @Inject () (
   }
 
   override val sessionClient: SessionClient = {
-    val server = findServerByName("session").getOrElse(mustFindServerByName("session-internal"))
+    val server = mustFindServerByName("session")
     Logger.info(s"Creating SessionClient w/ baseUrl[${server.host}]")
     new SessionClient(ws, baseUrl = server.host)
   }

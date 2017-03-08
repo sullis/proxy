@@ -3,7 +3,6 @@ package controllers
 import akka.actor.ActorSystem
 import io.flow.token.v0.{Client => TokenClient}
 import io.flow.organization.v0.{Client => OrganizationClient}
-import io.flow.session.internal.v0.{Client => SessionClient}
 import javax.inject.{Inject, Singleton}
 
 import lib._
@@ -26,7 +25,6 @@ class ReverseProxy @Inject () (
   with lib.Errors
   with auth.OrganizationAuth
   with auth.TokenAuth
-  with auth.SessionAuth
 {
 
   val index: Index = proxyConfigFetcher.current()
@@ -37,12 +35,6 @@ class ReverseProxy @Inject () (
     val server = mustFindServerByName("organization")
     Logger.info(s"Creating OrganizationClient w/ baseUrl[${server.host}]")
     new OrganizationClient(ws, baseUrl = server.host)
-  }
-
-  override val sessionClient: SessionClient = {
-    val server = findServerByName("session").getOrElse(mustFindServerByName("session-internal"))
-    Logger.info(s"Creating SessionClient w/ baseUrl[${server.host}]")
-    new SessionClient(ws, baseUrl = server.host)
   }
 
   override val tokenClient: TokenClient = {
@@ -125,17 +117,9 @@ class ReverseProxy @Inject () (
       }
 
       case Authorization.Session(sessionId) => {
-        resolveSession(
-          requestId = request.requestId,
-          sessionId = sessionId
-        ).flatMap {
-          case None => Future.successful(
-            request.response(401, "Session is not valid")
-          )
-          case Some(token) => {
-            proxyPostAuth(request, token)
-          }
-        }
+        Future.successful(
+          request.response(401, "Session is not valid")
+        )
       }
 
       case Authorization.User(userId) => {

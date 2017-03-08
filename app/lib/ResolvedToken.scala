@@ -20,7 +20,7 @@ case class ResolvedToken(
       "request_id" -> Some(requestId),
       "user_id" -> userId,
       "created_at" -> Some(dateTime.print(createdAt)),
-      "session_id" -> sessionId,
+      "session" -> sessionId,
       "organization" -> organizationId,
       "partner" -> partnerId,
       "role" -> role,

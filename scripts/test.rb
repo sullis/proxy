@@ -45,28 +45,6 @@ assert_status(201, response)
 assert_equals(response.json['id'], id)
 org = response.json
 
-# Start session testing
-sleep(1) # Wait for org to propagate to session service
-
-response = helpers.json_post("/organizations/#{id}?envelope=request", { :method => "GET" }).with_api_key.execute
-assert_unauthorized(response)
-
-response = helpers.json_post("/sessions/organizations/#{id}").execute
-assert_status(201, response)
-session_id = response.json['id']
-assert_not_nil(session_id)
-
-response = helpers.get("/#{id}/countries").execute
-assert_unauthorized(response)
-
-response = helpers.get("/#{id}/countries").with_header("Authorization", "Session %s" % session_id).execute
-assert_status(200, response)
-
-response = helpers.json_post("/#{id}/countries?envelope=request", { :method => "GET", "headers" => { "session" => [session_id] } }).execute
-assert_status(200, response)
-
-exit(1)
-
 # Test unknown path and response envelopes
 response = helpers.json_post("/foo").execute
 assert_generic_error(response, "Unknown HTTP path /foo")
@@ -120,6 +98,26 @@ response = helpers.json_post("/organizations/#{id}?envelope=request", { :method 
 assert_unauthorized(response)
 
 response = helpers.json_post("/organizations/#{id}?envelope=request", { :method => "GET" }).with_api_key.execute
+assert_unauthorized(response)
+
+# Start session testing
+sleep(2) # Wait for organization to propagate to session service itself
+
+response = helpers.json_post("/sessions/organizations/#{id}").execute
+assert_status(201, response)
+session_id = response.json['id']
+assert_not_nil(session_id)
+
+response = helpers.get("/#{id}/countries").with_header("Authorization", "Session %s" % session_id).execute
+assert_status(200, response)
+
+response = helpers.get("/#{id}/countries").execute
+assert_unauthorized(response)
+
+response = helpers.json_post("/#{id}/countries?envelope=request", { :method => "GET", "headers" => { "Authorization" => ["Session #{session_id}"] } }).execute
+assert_status(200, response)
+
+response = helpers.json_post("/#{id}/countries?envelope=request", { :method => "GET" }).with_api_key.execute
 assert_unauthorized(response)
 
 cleanup(helpers)

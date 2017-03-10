@@ -108,7 +108,7 @@ assert_status(201, response)
 session_id = response.json['id']
 assert_not_nil(session_id)
 
-response = helpers.get("/#{id}/countries").with_header("Authorization", "Session %s" % session_id).execute
+response = helpers.get("/#{id}/countries").with_header("Authorization", "session %s" % session_id).execute
 assert_status(200, response)
 
 response = helpers.get("/#{id}/countries").execute

@@ -10,11 +10,12 @@ sealed trait Authorization
 object Authorization {
 
   object Prefixes {
-    val Basic: String = "Basic"
-    val Bearer: String = "Bearer"
-    val Session: String = "Session"
+    val Basic: String = "basic"
+    val Bearer: String = "bearer"
+    val Session: String = "session"
 
     val all: Seq[String] = Seq(Basic, Bearer, Session)
+
   }
 
   /**
@@ -91,26 +92,32 @@ class AuthorizationParser @Inject() (
    */
   def parse(headerValue: String): Authorization = {
     headerValue.split(" ").toList match {
-      case Authorization.Prefixes.Basic :: value :: Nil => {
+      case prefix :: value :: Nil => {
+        prefix.toLowerCase.trim match {
+          case Authorization.Prefixes.Basic => {
+            new String(Base64.decodeBase64(StringUtils.getBytesUsAscii(value))).split(":").toList match {
+              case Nil => Authorization.InvalidApiToken
+              case token :: _ => Authorization.Token(token)
+            }
+          }
 
-        new String(Base64.decodeBase64(StringUtils.getBytesUsAscii(value))).split(":").toList match {
-          case Nil => Authorization.InvalidApiToken
-          case token :: _ => Authorization.Token(token)
+          case Authorization.Prefixes.Bearer => {
+            value match {
+              case JsonWebToken(_, claimsSet, _) if jwtIsValid(value) => parseJwtToken(claimsSet)
+              case _ => Authorization.InvalidBearer
+            }
+          }
+
+          case Authorization.Prefixes.Session => {
+            Authorization.Session(value)
+          }
+
+          case _ => Authorization.Unrecognized
         }
-      }
-
-      case Authorization.Prefixes.Bearer :: value :: Nil => {
-        value match {
-          case JsonWebToken(header, claimsSet, signature) if jwtIsValid(value) => parseJwtToken(claimsSet)
-          case _ => Authorization.InvalidBearer
-        }
-      }
-
-      case Authorization.Prefixes.Session :: value :: Nil => {
-        Authorization.Session(value)
       }
 
       case _ => Authorization.Unrecognized
+
     }
   }
 

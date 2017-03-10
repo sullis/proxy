@@ -95,19 +95,19 @@ class ReverseProxy @Inject () (
       }
 
       case Authorization.Unrecognized => Future.successful(
-        request.response(401, "Authorization header value must start with one of: " + Authorization.Prefixes.all.mkString(", "))
+        request.responseError(401, "Authorization header value must start with one of: " + Authorization.Prefixes.all.mkString(", "))
       )
 
       case Authorization.InvalidApiToken => Future.successful(
-        request.response(401, "API Token is not valid")
+        request.responseError(401, "API Token is not valid")
       )
 
       case Authorization.InvalidJwt(missing) => Future.successful(
-        request.response(401, s"JWT Token is not valid. Missing ${missing.mkString(", ")} from the JWT Claimset")
+        request.responseError(401, s"JWT Token is not valid. Missing ${missing.mkString(", ")} from the JWT Claimset")
       )
 
       case Authorization.InvalidBearer => Future.successful(
-        request.response(401, "Value for Bearer header was not formatted correctly. We expect a JWT Token.")
+        request.responseError(401, "Value for Bearer header was not formatted correctly. We expect a JWT Token.")
       )
 
       case Authorization.Token(token) => {
@@ -116,7 +116,7 @@ class ReverseProxy @Inject () (
           token = token
         ).flatMap {
           case None => Future.successful(
-            request.response(401, "API Token is not valid")
+            request.responseError(401, "API Token is not valid")
           )
           case Some(t) => {
             proxyPostAuth(request, token = t)
@@ -130,7 +130,7 @@ class ReverseProxy @Inject () (
           sessionId = sessionId
         ).flatMap {
           case None => Future.successful(
-            request.response(401, "Session is not valid")
+            request.responseError(401, "Session is not valid")
           )
           case Some(token) => {
             println(s"Token: $token")
@@ -254,7 +254,7 @@ class ReverseProxy @Inject () (
         // Currently all partner requests require authorization. Deny
         // access as there is no auth token present.
         Future.successful(
-          request.response(401, "Missing authorization headers")
+          request.responseError(401, "Missing authorization headers")
         )
       }
 
@@ -268,7 +268,7 @@ class ReverseProxy @Inject () (
           )
         } else {
           Future.successful(
-            request.response(401, s"Not authorized to access $partner or the partner does not exist")
+            request.responseError(401, s"Not authorized to access $partner or the partner does not exist")
           )
         }
       }
@@ -319,7 +319,7 @@ class ReverseProxy @Inject () (
       token.userId match {
         case None => Future.successful(
           Left(
-            request.response(401, s"Must authenticate to specify[${Constants.Headers.FlowServer} or ${Constants.Headers.FlowHost}]")
+            request.responseError(401, s"Must authenticate to specify[${Constants.Headers.FlowServer} or ${Constants.Headers.FlowHost}]")
           )
         )
 
@@ -327,7 +327,7 @@ class ReverseProxy @Inject () (
           authorizeOrganization(token, Constants.FlowOrganizationId).map {
             case None => {
               Left(
-                request.response(401, s"Not authorized to access organization[${Constants.FlowOrganizationId}]")
+                request.responseError(401, s"Not authorized to access organization[${Constants.FlowOrganizationId}]")
               )
             }
 

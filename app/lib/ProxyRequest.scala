@@ -300,6 +300,10 @@ case class ProxyRequest(
     }
   }
 
+  def responseError(status: Int, message: String): Result = {
+    response(status, JsString(message).toString)
+  }
+
   /**
    * Wraps the specified response body based on the requested wrappers
    */

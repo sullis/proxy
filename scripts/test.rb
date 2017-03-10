@@ -114,10 +114,20 @@ assert_status(200, response)
 response = helpers.get("/#{id}/countries").execute
 assert_unauthorized(response)
 
-response = helpers.json_post("/#{id}/countries?envelope=request", { :method => "GET", "headers" => { "Authorization" => ["Session #{session_id}"] } }).execute
+response = helpers.new_request("POST", "/#{id}/countries?envelope=request").
+             with_body(
+               ProxyGlobal.format_json(
+                 :method => "GET", "headers" => { "Authorization" => ["Session #{session_id}"] }
+               )
+             ).execute
 assert_status(200, response)
 
-response = helpers.json_post("/#{id}/countries?envelope=request", { :method => "GET" }).with_api_key.execute
+response = helpers.new_request("POST", "/#{id}/countries?envelope=request").
+             with_body(
+               ProxyGlobal.format_json(
+                 :method => "GET"
+               )
+             ).execute
 assert_unauthorized(response)
 
 cleanup(helpers)

@@ -127,32 +127,25 @@ class Helpers
   end
 
   def json_put(url, hash = nil)
-    json_request("POST", url, hash)
+    json_request("POST", url, hash).with_content_type("application/json")
+
   end
 
   def json_post(url, hash = nil)
-    json_request("POST", url, hash)
+    json_request("POST", url, hash).with_content_type("application/json")
   end
 
   def json_request(method, url, hash)
     r = new_request(method, url)
     if hash
-      body = ProxyGlobal.format_json(hash)
-      Helpers.with_tmp_file(body) do |tmp|
-        r.with_file(tmp)
-      end
+      r.with_body(ProxyGlobal.format_json(hash))
     else
       r
     end
   end
 
   def new_request(method, url)
-    r = Request.new(method, "%s%s" % [@base_url, url], @api_key_file)
-    if method == "POST" || method == "PUT"
-      r.with_content_type("application/json")
-    else
-      r
-    end
+    Request.new(method, "%s%s" % [@base_url, url], @api_key_file)
   end
 
 end
@@ -190,6 +183,12 @@ class Request
   def with_header(name, value)
     @headers << [name, value]
     self
+  end
+
+  def with_body(body)
+    Helpers.with_tmp_file(body) do |tmp|
+      with_file(tmp)
+    end
   end
 
   def with_file(path)

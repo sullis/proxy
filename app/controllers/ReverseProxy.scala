@@ -94,19 +94,19 @@ class ReverseProxy @Inject () (
         proxyPostAuth(request, token = ResolvedToken(requestId = request.requestId))
       }
 
-      case Authorization.Unrecognized => Future(
+      case Authorization.Unrecognized => Future.successful(
         request.response(401, "Authorization header value must start with one of: " + Authorization.Prefixes.all.mkString(", "))
       )
 
-      case Authorization.InvalidApiToken => Future(
+      case Authorization.InvalidApiToken => Future.successful(
         request.response(401, "API Token is not valid")
       )
 
-      case Authorization.InvalidJwt(missing) => Future(
+      case Authorization.InvalidJwt(missing) => Future.successful(
         request.response(401, s"JWT Token is not valid. Missing ${missing.mkString(", ")} from the JWT Claimset")
       )
 
-      case Authorization.InvalidBearer => Future(
+      case Authorization.InvalidBearer => Future.successful(
         request.response(401, "Value for Bearer header was not formatted correctly. We expect a JWT Token.")
       )
 
@@ -133,6 +133,7 @@ class ReverseProxy @Inject () (
             request.response(401, "Session is not valid")
           )
           case Some(token) => {
+            println(s"Token: $token")
             proxyPostAuth(request, token)
           }
         }
@@ -156,7 +157,7 @@ class ReverseProxy @Inject () (
   ): Future[Result] = {
     resolve(request, token).flatMap {
       case Left(result) => {
-        Future(result)
+        Future.successful(result)
       }
 
       case Right(operation) => {
@@ -198,18 +199,32 @@ class ReverseProxy @Inject () (
   ): Future[Result] = {
     token.userId match {
       case None => {
-        // Pass to backend w/ no auth headers and let backend enforce
-        // if path requires auth or not. Needed to support use case
-        // like adding a credit card over JSONP or anonymous org
-        // access from sessions
-        proxyDefault(operation, request, token)
+        token.organizationId match {
+          case None => {
+            // Pass to backend w/ no auth headers and let backend enforce
+            // if path requires auth or not. Needed to support use case
+            // like adding a credit card over JSONP or anonymous org
+            // access from sessions
+            proxyDefault(operation, request, token)
+          }
+
+          case Some(tokenOrganizationId) => {
+            if (tokenOrganizationId == organization) {
+              proxyDefault(operation, request, token)
+            } else {
+              Future.successful {
+                request.response(422, invalidOrgMessage(organization))
+              }
+            }
+          }
+        }
       }
 
       case Some(_) => {
         authorizeOrganization(token, organization).flatMap {
-          case None => Future(
-            request.response(422, s"Not authorized to access '$organization' or the organization does not exist")
-          )
+          case None => Future.successful {
+            request.response(422, invalidOrgMessage(organization))
+          }
 
           case Some(orgToken) => {
             // Use org token here as the data returned came from the
@@ -238,7 +253,7 @@ class ReverseProxy @Inject () (
       case None => {
         // Currently all partner requests require authorization. Deny
         // access as there is no auth token present.
-        Future(
+        Future.successful(
           request.response(401, "Missing authorization headers")
         )
       }
@@ -252,7 +267,7 @@ class ReverseProxy @Inject () (
             partner = Some(partner)
           )
         } else {
-          Future(
+          Future.successful(
             request.response(401, s"Not authorized to access $partner or the partner does not exist")
           )
         }
@@ -302,7 +317,7 @@ class ReverseProxy @Inject () (
       }
     } else {
       token.userId match {
-        case None => Future(
+        case None => Future.successful(
           Left(
             request.response(401, s"Must authenticate to specify[${Constants.Headers.FlowServer} or ${Constants.Headers.FlowHost}]")
           )
@@ -382,6 +397,10 @@ class ReverseProxy @Inject () (
     findServerByName(name).getOrElse {
       sys.error(s"There is no server named '$name' in the current config: " + index.config.sources.map(_.uri))
     }
+  }
+
+  private[this] def invalidOrgMessage(organization: String): String = {
+    s"Not authorized to access '$organization' or the organization does not exist"
   }
 
 }

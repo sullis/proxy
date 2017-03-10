@@ -4,6 +4,7 @@ import java.nio.charset.Charset
 import java.util.UUID
 
 import akka.util.ByteString
+import io.flow.error.v0.models.GenericError
 import play.api.libs.json._
 import play.api.mvc._
 
@@ -168,7 +169,7 @@ case class ProxyRequest(
   jsonpCallback: Option[String] = None,
   envelopes: Seq[Envelope] = Nil,
   queryParameters: Map[String, Seq[String]] = Map()
-) extends Results {
+) extends Results with Errors {
   assert(
     ProxyRequest.ReservedQueryParameters.filter { queryParameters.isDefinedAt } == Nil,
     "Cannot provide query reserved parameters"
@@ -301,7 +302,7 @@ case class ProxyRequest(
   }
 
   def responseError(status: Int, message: String): Result = {
-    response(status, JsString(message).toString)
+    response(status, genericError(message).toString)
   }
 
   /**
@@ -344,4 +345,5 @@ case class ProxyRequest(
       }
     }
   }
+
 }

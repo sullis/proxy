@@ -147,7 +147,12 @@ class Helpers
   end
 
   def new_request(method, url)
-    Request.new(method, "%s%s" % [@base_url, url], @api_key_file).with_content_type("application/json")
+    r = Request.new(method, "%s%s" % [@base_url, url], @api_key_file)
+    if method == "POST" || method == "PUT"
+      r.with_content_type("application/json")
+    else
+      r
+    end
   end
 
 end

@@ -32,7 +32,12 @@ def cleanup(helpers)
   delete_test_orgs(helpers, PARENT_ORGANIZATION_ID, TEST_ORG_PREFIX)
 end
 
-helpers = Helpers.new("http://localhost:7000", api_key_file)
+uri = ARGV.shift.to_s.strip
+if uri == ""
+  uri = "http://localhost:7000"
+end
+
+helpers = Helpers.new(uri, api_key_file)
 
 id = "%s-%s" % [TEST_ORG_PREFIX, ProxyGlobal.random_string(8)]
 response = helpers.json_post("/organizations", { :environment => 'sandbox', :parent_id => 'flow', "id" => id }).with_api_key.execute
@@ -41,23 +46,24 @@ assert_equals(response.json['id'], id)
 org = response.json
 
 # Start session testing
+sleep(1) # Wait for org to propagate to session service
+
 response = helpers.json_post("/organizations/#{id}?envelope=request", { :method => "GET" }).with_api_key.execute
 assert_unauthorized(response)
 
-response = helpers.json_post("/sessions", { :discriminator => "organization_session_form", :organization => id }).execute
+response = helpers.json_post("/sessions/organizations/#{id}").execute
 assert_status(201, response)
 session_id = response.json['id']
 assert_not_nil(session_id)
 
-response = helpers.get("/organizations/#{id}").execute
+response = helpers.get("/#{id}/countries").execute
 assert_unauthorized(response)
 
-response = helpers.get("/organizations/#{id}").with_header("Authorization", "Session %s" % session_id).execute
-puts response.inspect
-exit(1)
+response = helpers.get("/#{id}/countries").with_header("Authorization", "Session %s" % session_id).execute
+assert_status(200, response)
 
-response = helpers.json_post("/organizations/#{id}?envelope=request", { :method => "GET", "headers" => { "session" => [session_id] } }).execute
-puts response.inspect
+response = helpers.json_post("/#{id}/countries?envelope=request", { :method => "GET", "headers" => { "session" => [session_id] } }).execute
+assert_status(200, response)
 
 exit(1)
 

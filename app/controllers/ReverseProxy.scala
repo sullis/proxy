@@ -133,7 +133,6 @@ class ReverseProxy @Inject () (
             request.responseError(401, "Session is not valid")
           )
           case Some(token) => {
-            println(s"Token: $token")
             proxyPostAuth(request, token)
           }
         }

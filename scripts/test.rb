@@ -101,7 +101,7 @@ response = helpers.json_post("/organizations/#{id}?envelope=request", { :method 
 assert_unauthorized(response)
 
 # Start session testing
-sleep(2) # Wait for organization to propagate to session service itself
+sleep(5) # Wait for organization to propagate to session service itself
 
 response = helpers.json_post("/sessions/organizations/#{id}").execute
 assert_status(201, response)

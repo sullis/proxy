@@ -391,24 +391,27 @@ class ServerProxyImpl @Inject () (
 
         actor ! MetricActor.Messages.Send(definition.server.name, route.method, route.path, timeToFirstByteMs, r.status, organization, partner)
         Logger.info(s"[proxy] $request ${definition.server.name}:${route.method} ${definition.server.host} ${r.status} ${timeToFirstByteMs}ms requestId ${request.requestId}")
+        val headers: Seq[(String, String)] = toHeaders(r.headers)
 
         // If there's a content length, send that, otherwise return the body chunked
         contentLength match {
           case Some(length) => {
-            Status(r.status).sendEntity(HttpEntity.Streamed(body, Some(length), contentType))
+            Status(r.status).
+              sendEntity(HttpEntity.Streamed(body, Some(length), contentType)).
+              withHeaders(headers: _*)
           }
 
           case None => {
             contentType match {
-              case None => Status(r.status).chunked(body)
-              case Some(ct) => Status(r.status).chunked(body).as(ct)
+              case None => Status(r.status).chunked(body).withHeaders(headers: _*)
+              case Some(ct) => Status(r.status).chunked(body).withHeaders(headers: _*).as(ct)
             }
           }
         }
       }
 
       case r: play.api.libs.ws.ahc.AhcWSResponse => {
-        Status(r.status)(r.body)
+        Status(r.status)(r.body).withHeaders(toHeaders(r.allHeaders): _*)
       }
 
       case other => {
@@ -482,5 +485,13 @@ class ServerProxyImpl @Inject () (
       }
       case _ => // no-op
     }
+  }
+
+  private[this] def toHeaders(headers: Map[String, Seq[String]]): Seq[(String, String)] = {
+    headers.flatMap { case (k, vs) =>
+      vs.map { v =>
+        (k, v)
+      }
+    }.toSeq
   }
 }

@@ -1,4 +1,4 @@
-lib-apidname := "proxy"
+name := "proxy"
 
 organization := "io.flow"
 

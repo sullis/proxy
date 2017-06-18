@@ -101,7 +101,7 @@ response = helpers.json_post("/organizations/#{id}?envelope=request", { :method 
 assert_unauthorized(response)
 
 # Start session testing
-sleep(5) # Wait for organization to propagate to session service itself
+sleep(7) # Wait for organization to propagate to session service itself
 
 response = helpers.json_post("/sessions/organizations/#{id}").execute
 assert_status(201, response)
@@ -130,4 +130,15 @@ response = helpers.new_request("POST", "/#{id}/countries?envelope=request").
              ).execute
 assert_unauthorized(response)
 
+puts "Tests Complete. Starting cleanup"
+
 cleanup(helpers)
+
+puts ""
+puts ""
+puts "API Proxy Tests against %s" % uri
+puts " All tests Passed"
+puts ""
+puts ""
+
+

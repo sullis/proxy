@@ -224,7 +224,8 @@ class Request
     
     cmd = params.join(" ")
     ProxyGlobal.info(cmd)
-    puts cmd
+    puts cmd.gsub(/\s+(\-+)/, " \\\n    \\1")
+    puts ""
 
     tmpfile = ProxyGlobal.tmp_file_path
     if system(cmd + " > #{tmpfile}")

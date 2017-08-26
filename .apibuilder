@@ -21,10 +21,6 @@ code:
       version: latest
       generators:
         play_2_5_client: app/generated
-    experience:
-      version: latest
-      generators:
-        play_2_5_client: app/generated
     token:
       version: latest
       generators:

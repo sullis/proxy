@@ -5,9 +5,9 @@ import play.api.Logger
 /**
   * Given a particular configuration for a proxy, builds an in memory
   * index of the routes to make for efficient lookup of the route (and
-  * service) ased on an incoming request method and path.
+  * service) used on an incoming request method and path.
   * 
-  * Stategy:
+  * Strategy:
   *   - Use a hash map lookup for all static routes (no variables)
   *   - For paths with variables
   *     - First segment by the HTTP Method
@@ -25,8 +25,8 @@ case class Index(config: ProxyConfig) {
 
     val dynamicRoutes = all.flatMap { op =>
       op.route match {
-        case r: Route.Dynamic => Some(op)
-        case r: Route.Static => None
+        case _: Route.Dynamic => Some(op)
+        case _: Route.Static => None
       }
     }
 
@@ -44,14 +44,14 @@ case class Index(config: ProxyConfig) {
             }
           }
         }
-        case r: Route.Static => // no-op
+        case _: Route.Static => // no-op
       }
     }
 
     val staticRoutes = all.flatMap { op =>
       op.route match {
-        case r: Route.Dynamic => None
-        case r: Route.Static => Some(op)
+        case _: Route.Dynamic => None
+        case _: Route.Static => Some(op)
       }
     }
 
@@ -69,13 +69,8 @@ case class Index(config: ProxyConfig) {
   final def resolve(method: String, path: String): Option[Operation] = {
     staticRouteMap.get(routeKey(method, path)) match {
       case None => {
-        dynamicRoutes.get(method.toUpperCase) match {
-          case None => {
-            None
-          }
-          case Some(routes) => {
-            routes.find(_.route.matches(method.toUpperCase, path.toLowerCase.trim))
-          }
+        dynamicRoutes.getOrElse(method.toUpperCase, Nil).find { op =>
+          op.route.matches(method.toUpperCase, path.toLowerCase.trim)
         }
       }
       case Some(op) => {

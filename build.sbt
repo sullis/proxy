@@ -2,7 +2,7 @@ name := "proxy"
 
 organization := "io.flow"
 
-scalaVersion in ThisBuild := "2.11.11"
+scalaVersion in ThisBuild := "2.12.3"
 
 lazy val root = project
   .in(file("."))
@@ -13,11 +13,12 @@ lazy val root = project
     libraryDependencies ++= Seq(
       filters,
       ws,
+      guice,
       "commons-codec" % "commons-codec" % "1.10",
-      "com.amazonaws" % "aws-java-sdk-cloudwatch" % "1.11.184",
+      "com.amazonaws" % "aws-java-sdk-cloudwatch" % "1.11.196",
       "com.jason-goodwin" %% "authentikat-jwt" % "0.4.5",
       "io.flow" %% "apibuilder-validation" % "0.1.5",
-      "org.scalatestplus.play" %% "scalatestplus-play" % "1.5.0" % "test",
+      "org.scalatestplus.play" %% "scalatestplus-play" % "3.1.1" % "test",
       "org.yaml" % "snakeyaml" % "1.18"
     )
   )

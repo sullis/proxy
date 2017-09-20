@@ -61,7 +61,7 @@ assert_jsonp(response, "cb")
 #assert_generic_error(response.unwrap_jsonp, "HTTP 'POST /foo' is not defined")
 
 response = helpers.json_post("/token-validations").execute
-assert_generic_error(response, "Missing required field for type 'token_validation_form': 'token'")
+assert_generic_error(response, "Missing required field for token_validation_form: token")
 
 response = helpers.json_post("/token-validations", { :token => "foo" }).execute
 assert_generic_error(response, "The specified API token is not valid")

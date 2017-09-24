@@ -390,7 +390,7 @@ class ServerProxyImpl @Inject () (
         val contentLength: Option[Long] = r.headers.get("Content-Length").flatMap(_.headOption).flatMap(toLongSafe)
 
         actor ! MetricActor.Messages.Send(definition.server.name, route.method, route.path, timeToFirstByteMs, r.status, organization, partner)
-        Logger.info(s"[proxy] $request ${definition.server.name}:${route.method} ${definition.server.host} ${r.status} ${timeToFirstByteMs}ms requestId ${request.requestId}")
+        Logger.info(s"[proxy] $request ${definition.server.name}:${route.method} ${definition.server.host} ${r.status} ${timeToFirstByteMs}ms requestId ${request.requestId} requestContentType[${request.contentType}] responseContentType[${contentType.getOrElse("NONE")}]")
         val headers: Seq[(String, String)] = toHeaders(r.headers)
 
         // If there's a content length, send that, otherwise return the body chunked

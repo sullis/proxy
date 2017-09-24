@@ -105,16 +105,17 @@ end
 
 timeout = 50
 start = Time.now
-nodes.each do |node|
+nodes.each_with_index do |node, i|
   puts node
-  puts "  - Deploying version #{version}"
+  label = "node #{i+i} / #{nodes.size + 1}"
+  puts "  - Deploying version #{version} to #{label}"
   deploy(node, version)
 
   uri = "http://#{node}:#{PORT}/_internal_/healthcheck"
   url = URI.parse(uri)
   req = Net::HTTP::Get.new(url.to_s)
 
-  puts  "  - Checking health: #{uri} (timeout #{timeout} seconds)"
+  puts  "  - Checking health of #{label}: #{uri} (timeout #{timeout} seconds)"
   wait(timeout) do
     begin
       res = Net::HTTP.start(url.host, url.port) {|http|

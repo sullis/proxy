@@ -107,7 +107,7 @@ timeout = 50
 start = Time.now
 nodes.each_with_index do |node, index|
   puts node
-  label = "node #{index+i} / #{nodes.size}"
+  label = "node #{index+1} / #{nodes.size}"
   puts "  - Deploying version #{version} to #{label}"
   deploy(node, version)
 

@@ -34,7 +34,7 @@ if version.empty?
   
   while version.empty?
     print "Specify version to deploy#{default_message}: "
-    version = $stdin.gets
+    version = $stdin.gets.strip
     if version.strip.empty?
       version = default
     end
@@ -107,7 +107,7 @@ timeout = 50
 start = Time.now
 nodes.each_with_index do |node, index|
   puts node
-  label = "node #{index+1} / #{nodes.size}"
+  label = "node #{index+1}/#{nodes.size}"
   puts "  - Deploying version #{version} to #{label}"
   deploy(node, version)
 

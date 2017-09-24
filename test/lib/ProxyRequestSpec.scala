@@ -15,6 +15,16 @@ class ProxyRequestSpec extends PlaySpec with OneServerPerSuite {
 
   private[this] val testBody = Some(ProxyRequestBody.Bytes(ByteString("test".getBytes())))
 
+  "parses ContentType" in {
+    ContentType.fromString("application/json") must be(Some(ContentType.ApplicationJson))
+    ContentType.fromString("application/json; charset=UTF-8") must be(Some(ContentType.ApplicationJson))
+    ContentType.fromString("application/JSON;charset=utf-8") must be(Some(ContentType.ApplicationJson))
+
+    ContentType.fromString("foo") must be(None)
+    ContentType.fromString(";") must be(None)
+    ContentType.fromString("foo;") must be(None)
+  }
+
   "isValidCallback" in {
     ProxyRequest.isValidCallback("f") must be(true)
     ProxyRequest.isValidCallback("f2") must be(true)

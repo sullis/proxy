@@ -8,6 +8,7 @@ import io.flow.error.v0.models.GenericError
 import play.api.libs.json._
 import play.api.mvc._
 
+import scala.annotation.tailrec
 import scala.util.{Failure, Success, Try}
 
 sealed trait ContentType
@@ -23,7 +24,22 @@ object ContentType {
   val byName = all.map(x => x.toString.toLowerCase -> x).toMap
 
   def apply(value: String): ContentType = fromString(value).getOrElse(Other(value))
-  def fromString(value: String): Option[ContentType] = byName.get(value.toLowerCase)
+
+  @tailrec
+  def fromString(value: String): Option[ContentType] = {
+    byName.get(value.toLowerCase) match {
+      case Some(ct) => Some(ct)
+      case None => {
+        // check for charset
+        val index = value.indexOf(";")
+        if (index > 0 ) {
+          fromString(value.substring(0, index))
+        } else {
+          None
+        }
+      }
+    }
+  }
 }
 
 sealed trait Envelope

@@ -476,16 +476,12 @@ class ServerProxyImpl @Inject () (
 
   private[this] def logFormData(request: ProxyRequest, body: JsValue): Unit = {
     val typ = definition.multiService.bodyTypeFromPath(request.method, request.path)
-    body match {
-      case j: JsObject if typ.isEmpty && j.value.isEmpty => // nothing to log
-      case j: JsObject => {
-        val safeBody = LoggingUtil.logger.safeJson(body, typ = typ)
-        Logger.info(s"$request form body of type[${typ.getOrElse("unknown")}] requestId[${request.requestId}]: $safeBody")
-      }
-      case _ => {
-        Logger.info(s"$request form body of type[${typ.getOrElse("unknown")}] requestId[${request.requestId}]: Body of type[${body.getClass.getName}] which cannot be safely logged")
-      }
+    val safeBody = body match {
+      case j: JsObject if typ.isEmpty && j.value.isEmpty => "{}"
+      case j: JsObject => LoggingUtil.logger.safeJson(body, typ = typ)
+      case _ => "{...} Body of type[${body.getClass.getName}] fully redacted"
     }
+    Logger.info(s"$request body type[${typ.getOrElse("unknown")}] requestId[${request.requestId}]: $safeBody")
   }
 
   private[this] def toHeaders(headers: Map[String, Seq[String]]): Seq[(String, String)] = {

@@ -20,7 +20,7 @@ object LoggingUtil {
         "hs_code" -> Set("code"),
         "tariff_code" -> Set("code"),
         "hs6" -> Set("code"),
-        "hs10" -> Set("code"),
+        "hs10" -> Set("code")
       )
     )
   )

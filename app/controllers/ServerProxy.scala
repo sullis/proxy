@@ -1,6 +1,8 @@
 package controllers
 
 import akka.actor.ActorSystem
+import akka.stream.scaladsl.Source
+import akka.util.ByteString
 import com.google.inject.AbstractModule
 import com.google.inject.assistedinject.{Assisted, FactoryModuleBuilder}
 import io.apibuilder.validation.FormData
@@ -8,9 +10,10 @@ import java.net.URI
 import javax.inject.Inject
 
 import actors.MetricActor
+import akka.stream.ActorMaterializer
 import io.apibuilder.spec.v0.models.ParameterLocation
 import play.api.Logger
-import play.api.libs.ws.{StreamedResponse, WSClient}
+import play.api.libs.ws.{DefaultWSResponseHeaders, StreamedResponse, WSClient}
 import play.api.mvc._
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -20,11 +23,13 @@ import lib._
 import play.api.libs.json.{JsObject, JsValue, Json}
 
 import scala.annotation.tailrec
+import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
+import akka.stream.scaladsl.StreamConverters
 
 case class ServerProxyDefinition(
-  server: Server,
-  multiService: io.apibuilder.validation.MultiService // TODO Move higher level
-) {
+                                  server: Server,
+                                  multiService: io.apibuilder.validation.MultiService // TODO Move higher level
+                                ) {
 
   val hostHeaderValue: String = Option(new URI(server.host).getHost).getOrElse {
     sys.error(s"Could not parse host from server[$server]")
@@ -34,10 +39,10 @@ case class ServerProxyDefinition(
     * Returns the subset of query parameters that are documented as acceptable for this method
     */
   def definedQueryParameters(
-    method: String,
-    path: String,
-    allQueryParameters: Seq[(String, String)]
-  ): Seq[(String, String)] = {
+                              method: String,
+                              path: String,
+                              allQueryParameters: Seq[(String, String)]
+                            ): Seq[(String, String)] = {
     multiService.parametersFromPath(method, path) match {
       case None => {
         allQueryParameters
@@ -65,12 +70,12 @@ trait ServerProxy {
   def definition: ServerProxyDefinition
 
   def proxy(
-    request: ProxyRequest,
-    route: Route,
-    token: ResolvedToken,
-    organization: Option[String] = None,
-    partner: Option[String] = None
-  ): Future[play.api.mvc.Result]
+             request: ProxyRequest,
+             route: Route,
+             token: ResolvedToken,
+             organization: Option[String] = None,
+             partner: Option[String] = None
+           ): Future[play.api.mvc.Result]
 
 }
 
@@ -83,14 +88,14 @@ object ServerProxy {
   }
 
   /**
-    *  Maps a query string that may contain multiple values per parameter
-    *  to a sequence of query parameters. Uses the underlying form data to
-    *  also upcast the parameters (mapping the incoming parameters to a json
-    *  document, upcasting, then back to query parameters)
+    * Maps a query string that may contain multiple values per parameter
+    * to a sequence of query parameters. Uses the underlying form data to
+    * also upcast the parameters (mapping the incoming parameters to a json
+    * document, upcasting, then back to query parameters)
     *
-    *  @todo Add example query string
-    *  @example
-    *  {{{
+    * @todo Add example query string
+    * @example
+    * {{{
     *    query(
     *      Map[String, Seq[String]](
     *        "foo" -> Seq("a", "b"),
@@ -102,14 +107,13 @@ object ServerProxy {
     *      ("foo2", "c")
     *    )
     *  }}}
-    *
-    *  @param incoming A map of query parameter keys to sequences of their values.
-    *  @return A sequence of keys, each paired with exactly one value. The keys are further
-    *          normalized to match Flow expectations (e.g. number[] => number)
+    * @param incoming A map of query parameter keys to sequences of their values.
+    * @return A sequence of keys, each paired with exactly one value. The keys are further
+    *         normalized to match Flow expectations (e.g. number[] => number)
     */
   def query(
-    incoming: Map[String, Seq[String]]
-  ): Seq[(String, String)] = {
+             incoming: Map[String, Seq[String]]
+           ): Seq[(String, String)] = {
     Util.toFlatSeq(
       FormData.parseEncoded(FormData.toEncoded(FormData.toJson(incoming)))
     )
@@ -125,15 +129,16 @@ class ServerProxyModule extends AbstractModule {
   }
 }
 
-class ServerProxyImpl @Inject () (
-  @javax.inject.Named("metric-actor") val actor: akka.actor.ActorRef,
-  system: ActorSystem,
-  ws: WSClient,
-  flowAuth: FlowAuth,
-  @Assisted override val definition: ServerProxyDefinition
-) extends ServerProxy with Controller with lib.Errors {
+class ServerProxyImpl @Inject()(
+                                 @javax.inject.Named("metric-actor") val actor: akka.actor.ActorRef,
+                                 implicit val system: ActorSystem,
+                                 ws: WSClient,
+                                 flowAuth: FlowAuth,
+                                 @Assisted override val definition: ServerProxyDefinition
+                               ) extends ServerProxy with Controller with lib.Errors {
 
   private[this] implicit val (ec, name) = resolveContextName(definition.server.name)
+  private[this] implicit val materializer = ActorMaterializer()
 
   /**
     * Returns the execution context to use, if found. Works by recursively
@@ -163,12 +168,12 @@ class ServerProxyImpl @Inject () (
   }
 
   override final def proxy(
-    request: ProxyRequest,
-    route: Route,
-    token: ResolvedToken,
-    organization: Option[String] = None,
-    partner: Option[String] = None
-  ) = {
+                            request: ProxyRequest,
+                            route: Route,
+                            token: ResolvedToken,
+                            organization: Option[String] = None,
+                            partner: Option[String] = None
+                          ) = {
     Logger.info(s"[proxy] $request to [${definition.server.name}] ${route.method} ${definition.server.host}${request.path} requestId ${request.requestId}")
 
     /**
@@ -182,12 +187,12 @@ class ServerProxyImpl @Inject () (
   }
 
   private[this] def envelopeResponse(
-    request: ProxyRequest,
-    route: Route,
-    token: ResolvedToken,
-    organization: Option[String] = None,
-    partner: Option[String] = None
-  ) = {
+                                      request: ProxyRequest,
+                                      route: Route,
+                                      token: ResolvedToken,
+                                      organization: Option[String] = None,
+                                      partner: Option[String] = None
+                                    ) = {
     val formData: JsValue = request.jsonpCallback match {
       case Some(_) => {
         FormData.toJson(request.queryParameters)
@@ -254,12 +259,12 @@ class ServerProxyImpl @Inject () (
   }
 
   private[this] def standard(
-    request: ProxyRequest,
-    route: Route,
-    token: ResolvedToken,
-    organization: Option[String] = None,
-    partner: Option[String] = None
-  ) = {
+                              request: ProxyRequest,
+                              route: Route,
+                              token: ResolvedToken,
+                              organization: Option[String] = None,
+                              partner: Option[String] = None
+                            ): Future[Result] = {
     val req = ws.url(definition.server.host + request.path)
       .withFollowRedirects(false)
       .withMethod(route.method)
@@ -380,9 +385,9 @@ class ServerProxyImpl @Inject () (
     val startMs = System.currentTimeMillis
 
     response.map {
-      case r: Result => {
-        r
-      }
+      case r: Result if r.header.status >= 400 && r.header.status < 500 => logBodyStream(request, r.header.status, r.body.dataStream)
+
+      case StreamedResponse(DefaultWSResponseHeaders(status, headers), body) if status >= 400 && status < 500 => logBodyStream(request, status, body)
 
       case StreamedResponse(r, body) => {
         val timeToFirstByteMs = System.currentTimeMillis - startMs
@@ -409,13 +414,13 @@ class ServerProxyImpl @Inject () (
           }
         }
       }
-
       case r: play.api.libs.ws.ahc.AhcWSResponse => {
+        log4xx(request, r.status, r.body)
         Status(r.status)(r.body).withHeaders(toHeaders(r.allHeaders): _*)
       }
 
       case other => {
-        sys.error("Unhandled response: " + other.getClass.getName)
+        sys.error("Unhandled response of type: " + other.getClass.getName)
       }
     }
   }
@@ -426,9 +431,9 @@ class ServerProxyImpl @Inject () (
     *   - adding a default content-type
     */
   private[this] def proxyHeaders(
-    request: ProxyRequest,
-    token: ResolvedToken
-  ): Headers = {
+                                  request: ProxyRequest,
+                                  token: ResolvedToken
+                                ): Headers = {
 
     val headersToAdd = Seq(
       Constants.Headers.FlowServer -> name,
@@ -458,13 +463,13 @@ class ServerProxyImpl @Inject () (
   }
 
   private[this] def setApplicationJsonContentType(
-    headers: Headers
-  ): Headers = {
+                                                   headers: Headers
+                                                 ): Headers = {
     headers.
       remove("Content-Type").
       add("Content-Type" -> ContentType.ApplicationJson.toString)
   }
-  
+
   private[this] def toLongSafe(value: String): Option[Long] = {
     Try {
       value.toLong
@@ -475,13 +480,44 @@ class ServerProxyImpl @Inject () (
   }
 
   private[this] def logFormData(request: ProxyRequest, body: JsValue): Unit = {
-    val typ = definition.multiService.bodyTypeFromPath(request.method, request.path)
-    val safeBody = body match {
-      case j: JsObject if typ.isEmpty && j.value.isEmpty => "{}"
-      case j: JsObject => LoggingUtil.logger.safeJson(body, typ = typ)
-      case _ => "{...} Body of type[${body.getClass.getName}] fully redacted"
+    if (request.method != "GET") {
+      val typ = definition.multiService.bodyTypeFromPath(request.method, request.path)
+      val safeBody = body match {
+        case j: JsObject if typ.isEmpty && j.value.isEmpty => "{}"
+        case j: JsObject => LoggingUtil.logger.safeJson(body, typ = typ)
+        case _ => "{...} Body of type[${body.getClass.getName}] fully redacted"
+      }
+      Logger.info(s"$request body type[${typ.getOrElse("unknown")}] requestId[${request.requestId}]: $safeBody")
     }
-    Logger.info(s"$request body type[${typ.getOrElse("unknown")}] requestId[${request.requestId}]: $safeBody")
+  }
+
+  private[this] def logBodyStream(request: ProxyRequest, status: Int, body: Source[ByteString, _]): Result = {
+    Try {
+      body.runWith(StreamConverters.asInputStream(FiniteDuration(100, MILLISECONDS)))
+    } match {
+      case Success(is) => {
+        val msg = scala.io.Source.fromInputStream(is).mkString
+        log4xx(request, status, msg)
+        Result(ResponseHeader(status, Map.empty, None), HttpEntity.Strict(data = ByteString(msg), contentType = Option(request.contentType.toString)))
+      }
+      case Failure(ex) => {
+        log4xx(request, status, s"Failed to deserialize ${ex.getMessage}")
+        Result(ResponseHeader(status, Map.empty, None), HttpEntity.Strict(data = ByteString(ex.getMessage), contentType = Option(request.contentType.toString)))
+      }
+    }
+  }
+
+  private[this] def log4xx(request: ProxyRequest, status: Int, body: String): Unit = {
+    if (status >= 400 && status < 500) {
+      val finalBody = Try {
+        Json.parse(body)
+      } match {
+        case Success(js) => LoggingUtil.logger.safeJson(js, typ = None)
+        case Failure(_) => body
+      }
+
+      Logger.info(s"$request responded with $status requestId[${request.requestId}]: $finalBody")
+    }
   }
 
   private[this] def toHeaders(headers: Map[String, Seq[String]]): Seq[(String, String)] = {

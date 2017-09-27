@@ -508,7 +508,8 @@ class ServerProxyImpl @Inject()(
   }
 
   private[this] def log4xx(request: ProxyRequest, status: Int, body: String): Unit = {
-    if (status >= 400 && status < 500) {
+    // GET too noisy due to bots
+    if (request.method != "GET" && status >= 400 && status < 500) {
       val finalBody = Try {
         Json.parse(body)
       } match {

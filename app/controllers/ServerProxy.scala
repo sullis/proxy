@@ -226,7 +226,7 @@ class ServerProxyImpl @Inject()(
 
     definition.multiService.upcast(route.method, route.path, formData) match {
       case Left(errors) => {
-        Logger.info(s"[proxy] $request ${definition.server.name} 422 based on apibuilder schema")
+        log4xx(request, 422, formData, errors)
         Future(request.response(422, genericErrors(errors).toString))
       }
 
@@ -284,7 +284,7 @@ class ServerProxyImpl @Inject()(
 
         definition.multiService.upcast(route.method, route.path, newBody) match {
           case Left(errors) => {
-            Logger.info(s"[proxy] $request 422 based on apibuilder schema")
+            log4xx(request, 422, newBody, errors)
             Future(
               UnprocessableEntity(
                 genericErrors(errors)
@@ -327,7 +327,7 @@ class ServerProxyImpl @Inject()(
 
             definition.multiService.upcast(route.method, route.path, js) match {
               case Left(errors) => {
-                Logger.info(s"[proxy] $request 422 based on apibuilder schema")
+                log4xx(request, 422, js, errors)
                 Future(
                   UnprocessableEntity(
                     genericErrors(errors)
@@ -518,6 +518,15 @@ class ServerProxyImpl @Inject()(
       }
 
       Logger.info(s"$request responded with $status requestId[${request.requestId}]: $finalBody")
+    }
+  }
+
+  private[this] def log4xx(request: ProxyRequest, status: Int, js: JsValue, errors: Seq[String]): Unit = {
+    // GET too noisy due to bots
+    if (request.method != "GET" && status >= 400 && status < 500) {
+      // TODO: PARSE TYPE
+      val finalBody = LoggingUtil.logger.safeJson(js, typ = None)
+      Logger.info(s"$request responded with $status requestId[${request.requestId}] Invalid JSON: ${errors.mkString(", ")} BODY: $finalBody")
     }
   }
 

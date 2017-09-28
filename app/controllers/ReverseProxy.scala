@@ -310,7 +310,7 @@ class ReverseProxy @Inject () (
           case None => {
             multiService.validate(request.method, path) match {
               case Left(errors) => {
-                Logger.info(s"Unrecognized method ${request.method} for $path - returning 422 w/ available methods: $errors")
+                Logger.info(s"Unrecognized method ${request.method} for $path - available methods: ${errors.mkString(", ")}")
                 Left(request.response(422, genericErrors(errors).toString))
               }
               case Right(_) => {

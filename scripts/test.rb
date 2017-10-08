@@ -9,7 +9,7 @@ load 'assert.rb'
 PARENT_ORGANIZATION_ID = "flow"
 TEST_ORG_PREFIX = "proxy-test"
 
-api_key_file = File.expand_path("~/.flow/%s" % PARENT_ORGANIZATION_ID)
+api_key_file = File.expand_path("~/.flow/%s-sandboxes" % PARENT_ORGANIZATION_ID)
 if !File.exists?(api_key_file)
   puts "ERROR: Missing api key file: %s" % api_key_file
   exit(1)
@@ -47,18 +47,18 @@ org = response.json
 
 # Test unknown path and response envelopes
 response = helpers.json_post("/foo").execute
-#assert_generic_error(response, "HTTP 'POST /foo' is not defined")
+assert_generic_error(response, "HTTP path '/foo' is not defined")
 
 response = helpers.json_post("/foo?envelope=res").execute
 assert_generic_error(response, "Invalid value 'res' for query parameter 'envelope' - must be one of request, response")
 
 response = helpers.json_post("/foo?envelope=response").execute
 assert_envelope(response)
-#assert_generic_error(response.unwrap_envelope, "HTTP 'POST /foo' is not defined")
+assert_generic_error(response.unwrap_envelope, "HTTP path '/foo' is not defined")
 
 response = helpers.json_post("/foo?envelope=response&callback=cb").execute
 assert_jsonp(response, "cb")
-#assert_generic_error(response.unwrap_jsonp, "HTTP 'POST /foo' is not defined")
+assert_generic_error(response.unwrap_jsonp, "HTTP path '/foo' is not defined")
 
 response = helpers.json_post("/token-validations").execute
 assert_generic_error(response, "Missing required field for token_validation_form: token")
@@ -70,8 +70,17 @@ response = helpers.json_post("/token-validations", { :token => IO.read(api_key_f
 assert_status(200, response)
 assert_equals(response.json["status"], "Hooray! The provided API Token is valid.")
 
-response = helpers.json_post("/organizations", { :environment => 'sandbox', :parent => 'demo', :id => "proxy-test" }).execute
-assert_unauthorized(response)
+response = helpers.json_put("/organizations/#{id}", { :environment => 'sandbox', :parent => 'demo' }).execute
+assert_status(401, response)
+
+# Validate we cannot access another organization
+response = helpers.get("/organizations/remolacha").with_api_key.execute
+assert_status(422, response)
+assert_equals(response.json["messages"], ["Not authorized to access organization 'remolacha' or the organization does not exist"])
+
+# Validate can access own organization
+response = helpers.get("/organizations/#{id}").with_api_key.execute
+assert_status(200, response)
 
 # Test response envelopes for valid requests
 response = helpers.get("/organizations/#{id}?envelope=response").with_api_key.execute
@@ -142,5 +151,3 @@ puts "API Proxy Tests against %s" % uri
 puts " All tests Passed"
 puts ""
 puts ""
-
-

@@ -589,7 +589,10 @@ class ServerProxyImpl @Inject()(
       }
       case Right(op) => {
         definition.multiService.validateResponseCode(op, status) match {
-          case Left(error) => Logger.warn(s"[proxy] FlowProxyResponseError $error")
+          case Left(error) => {
+            // Commented out until we can verify the error
+            // Logger.warn(s"[proxy] FlowProxyResponseError $error")
+          }
           case Right(_) => // no-op
         }
       }

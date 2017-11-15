@@ -1,0 +1,16 @@
+# Make sure that older error messages pre migration pass through untouched
+
+{
+  "errors": [
+    {
+      "code": "invalid_cvn"
+    }
+  ]
+}
+
+{
+  "code": "invalid_cvn",
+  "messages": [
+    "CVN is not valid"
+  ]
+}

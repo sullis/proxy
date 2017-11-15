@@ -1,0 +1,15 @@
+# Make sure that older error messages pre migration pass through untouched
+
+{
+  "code": "generic_error",
+  "messages": [
+    "Year must be >= 2017"
+  ]
+}
+
+{
+  "code": "generic_error",
+  "messages": [
+    "Year must be >= 2017"
+  ]
+}

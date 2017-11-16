@@ -39,7 +39,6 @@ object RewriteHandler {
     }
 
     private[this] def translateErrors(errors: Seq[JsValue]): JsValue = {
-      println(s"translateErrors: $errors")
       JsArray(
         errors.map {
           case o: JsObject => translateError(o)
@@ -49,11 +48,9 @@ object RewriteHandler {
     }
 
     private[this] def translateError(js: JsObject): JsObject = {
-      println(s"translateError: $js")
       (js \ "code").asOpt[String] match {
         case None => js
         case Some(errorCode) => {
-          println(s"translateError: errorCode[$errorCode]")
           // Inject our translated message here
           Json.toJson(
             js.value ++ Map(
@@ -72,34 +69,25 @@ object RewriteHandler {
 
   case object RewriteErrors extends RewriteHandler {
     override def rewrite(incoming: JsObject): JsObject = {
-      Json.toJson(
-        incoming.value.map { case (key, v) =>
-          key -> (
-            key match {
-              case "errors" => {
-                v match {
-                  case a: JsArray => rewriteErrors(a.value)
-                  case _ => v
-                }
-              }
-              case _ => v
-            }
-          )
+      incoming.value.keys.toList match {
+        case "errors" :: Nil => {
+          incoming.value("errors") match {
+            case a: JsArray => rewriteErrors(a.value)
+            case _ => incoming
+
+          }
         }
-      ).asInstanceOf[JsObject]
+        case _ => incoming
+      }
     }
 
-    private[this] def rewriteErrors(errors: Seq[JsValue]): JsValue = {
-      val codes = errors.flatMap { js => (js \ "code").asOpt[String] }
-      codes.toList match {
-        case Nil => JsArray(errors)
-        case firstCode :: _ => {
-          Json.obj(
-            "code" -> firstCode,
-            "messages" -> JsArray(Nil)
-          )
-        }
-      }
+    private[this] def rewriteErrors(errors: Seq[JsValue]): JsObject = {
+      val codes: Seq[String] = errors.flatMap { js => (js \ "code").asOpt[String] }
+
+      Json.obj(
+        "code" -> JsString(codes.headOption.getOrElse("generic_error")),
+        "messages" -> errors.flatMap { js => (js \ "message").asOpt[String] }
+      )
     }
   }
 }

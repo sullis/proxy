@@ -63,7 +63,7 @@ case class TranslationTarget(
     )
 
     variables.foldLeft(template) { case (value, k) =>
-      value.replace(s"{$k}", values(k))
+      value.replace(s"{{$k}}", values(k))
     }
   }
 

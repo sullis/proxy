@@ -1,5 +1,7 @@
 package compat
 
+import javax.inject.{Inject, Singleton}
+
 import play.api.Logger
 import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
 
@@ -42,7 +44,8 @@ object RewriteHandler {
   }
 }
 
-case class RewriteErrors() {
+@Singleton
+class RewriteErrors @Inject() () {
 
   def rewrite(incoming: JsValue): JsValue = {
     incoming.asOpt[JsObject] match {

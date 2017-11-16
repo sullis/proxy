@@ -1,7 +1,8 @@
 package compat
 
 import javax.inject.{Inject, Singleton}
-import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
+
+import play.api.libs.json._
 
 sealed trait RewriteHandler {
   def rewrite(incoming: JsObject): JsObject
@@ -20,7 +21,51 @@ object RewriteHandler {
   ) extends RewriteHandler {
 
     override def rewrite(incoming: JsObject): JsObject = {
-      incoming
+      Json.toJson(
+        incoming.value.map { case (key, v) =>
+          key -> (
+            key match {
+              case "errors" => {
+                v match {
+                  case a: JsArray => translateErrors(a.value)
+                  case _ => v
+                }
+              }
+              case _ => v
+            }
+            )
+        }
+      ).asInstanceOf[JsObject]
+    }
+
+    private[this] def translateErrors(errors: Seq[JsValue]): JsValue = {
+      println(s"translateErrors: $errors")
+      JsArray(
+        errors.map {
+          case o: JsObject => translateError(o)
+          case j => j
+        }
+      )
+    }
+
+    private[this] def translateError(js: JsObject): JsObject = {
+      println(s"translateError: $js")
+      (js \ "code").asOpt[String] match {
+        case None => js
+        case Some(errorCode) => {
+          println(s"translateError: errorCode[$errorCode]")
+          // Inject our translated message here
+          Json.toJson(
+            js.value ++ Map(
+              "message" -> JsString(
+                catalog.lookup(errorCode).getOrElse {
+                  (js \ "message").asOpt[String].getOrElse(errorCode)
+                }
+              )
+            )
+          ).asInstanceOf[JsObject]
+        }
+      }
     }
 
   }

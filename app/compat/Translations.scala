@@ -54,7 +54,7 @@ case class TranslationCatalog(
     keys.get(key) match {
       case Some(value) => Some(value)
       case None => {
-        println(s" -- could not find key[$key] - available: ${keys.keys}")
+        Logger.warn(s"[TranslationCatalog] Key[$key] not found for locale[$locale]")
         fallbackCatalog.flatMap(_.lookup(key))
       }
     }

@@ -8,7 +8,6 @@ import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
 
 class RewriteErrorsSpec extends FunSpec with Matchers with OneServerPerSuite {
 
-  private[this] def translations = app.injector.instanceOf[Translations]
   private[this] def rewriteErrors = app.injector.instanceOf[RewriteErrors]
 
   private[this] val Dir: File = {
@@ -80,9 +79,7 @@ class RewriteErrorsSpec extends FunSpec with Matchers with OneServerPerSuite {
       fixture.testCases.
         filter(_.locale=="en_FR").
         foreach { testCase =>
-        val catalog = translations.locale(testCase.locale)
-        println(s"locale[${testCase.locale}] => $catalog")
-        val transformed = rewriteErrors.rewrite(catalog, fixture.original)
+        val transformed = rewriteErrors.rewrite(testCase.locale, fixture.original)
         val differences = diff(testCase.expected, transformed)
         if (differences.nonEmpty) {
           println("")

@@ -1,0 +1,29 @@
+ {
+   "errors": [
+     {
+       "code": "payment_order_not_found"
+     }
+   ]
+ }
+
+ locale: en_US
+ {
+   "code": "payment_error",
+   "codes": [
+    "invalid_order"
+   ],
+   "messages": [
+     "The specified order was not found"
+   ]
+ }
+
+ locale: en_FR
+ {
+   "code": "payment_error",
+   "codes": [
+    "invalid_order"
+   ],
+   "messages": [
+     "The specified order was not found"
+   ]
+ }

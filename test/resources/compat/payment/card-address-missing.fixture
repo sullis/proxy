@@ -1,0 +1,23 @@
+{
+  "errors": [
+    {
+      "code": "card_address_missing"
+    }
+  ]
+}
+
+locale: en_US
+{
+  "code": "invalid_address",
+  "messages": [
+    "Must specify street address"
+  ]
+}
+
+locale: en_FR
+{
+  "code": "invalid_address",
+  "messages": [
+    "Must specify street address"
+  ]
+}

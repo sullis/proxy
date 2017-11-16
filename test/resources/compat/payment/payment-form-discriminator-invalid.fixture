@@ -1,0 +1,29 @@
+ {
+   "errors": [
+     {
+       "code": "payment_form_discriminator_invalid"
+     }
+   ]
+ }
+
+ locale: en_US
+ {
+   "code": "payment_error",
+   "codes": [
+    "unknown"
+   ],
+   "messages": [
+     "Invalid payment form discriminator"
+   ]
+ }
+
+ locale: en_FR
+{
+   "code": "payment_error",
+   "codes": [
+    "unknown"
+   ],
+   "messages": [
+     "Invalid payment form discriminator"
+   ]
+ }

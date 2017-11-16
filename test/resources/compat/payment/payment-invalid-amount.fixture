@@ -1,0 +1,30 @@
+ {
+   "errors": [
+     {
+       "code": "payment_invalid_amount",
+       "amount": "100"
+     }
+   ]
+ }
+
+ locale: en_US
+ {
+   "code": "payment_error",
+   "codes": [
+    "invalid_amount"
+   ],
+   "messages": [
+     "Amount must equal order amount '100'"
+   ]
+ }
+
+ locale: en_FR
+ {
+   "code": "payment_error",
+   "codes": [
+    "invalid_amount"
+   ],
+   "messages": [
+     "Amount must equal order amount '100'"
+   ]
+ }

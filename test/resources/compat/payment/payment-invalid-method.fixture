@@ -1,0 +1,31 @@
+ {
+   "errors": [
+     {
+       "code": "payment_invalid_method",
+       "methodId": "paypal",
+       "validMethods": "a, b, c"
+     }
+   ]
+ }
+
+ locale: en_US
+ {
+   "code": "payment_error",
+   "codes": [
+    "invalid_method"
+   ],
+   "messages": [
+     "Invalid payment method[paypal]. Must be one: of a, b, c"
+   ]
+ }
+
+ locale: en_FR
+ {
+   "code": "payment_error",
+   "codes": [
+    "invalid_method"
+   ],
+   "messages": [
+     "Invalid payment method[paypal]. Must be one: of a, b, c"
+   ]
+ }

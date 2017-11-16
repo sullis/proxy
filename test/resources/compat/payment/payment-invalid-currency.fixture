@@ -1,0 +1,30 @@
+ {
+   "errors": [
+     {
+       "code": "payment_invalid_currency",
+       "currency": "AUD"
+     }
+   ]
+ }
+
+ locale: en_US
+ {
+   "code": "payment_error",
+   "codes": [
+    "invalid_currency"
+   ],
+   "messages": [
+     "Currency must equal order currency 'AUD'"
+   ]
+ }
+
+ locale: en_FR
+ {
+   "code": "payment_error",
+   "codes": [
+    "invalid_currency"
+   ],
+   "messages": [
+     "Currency must equal order currency 'AUD'"
+   ]
+ }

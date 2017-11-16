@@ -1,0 +1,23 @@
+{
+  "errors": [
+    {
+      "code": "card_address_country_missing"
+    }
+  ]
+}
+
+locale: en_US
+{
+  "code": "invalid_address",
+  "messages": [
+    "Country is required for all addresses"
+  ]
+}
+
+locale: en_FR
+{
+  "code": "invalid_address",
+  "messages": [
+    "Country is required for all addresses"
+  ]
+}

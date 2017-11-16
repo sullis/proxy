@@ -7,7 +7,7 @@ import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
 
 class RewriteErrorsSpec extends FunSpec with Matchers {
 
-  private[this] lazy val rewriteErrors = RewriteErrors()
+  private[this] lazy val rewriteErrors = new RewriteErrors()
 
   private[this] val Dir: File = {
     val d = new File("test/resources/compat")

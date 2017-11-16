@@ -1,5 +1,3 @@
-# Make sure that older error messages pre migration pass through untouched
-
 {
   "errors": [
     {

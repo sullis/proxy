@@ -15,19 +15,17 @@ object RewriteHandler {
 
   case class SingleErrorsArray(incoming: JsValue, errors: Seq[JsObject]) extends RewriteHandler {
     override def rewrite(): JsValue = {
-      errors.toList match {
-        case first :: rest => {
-          // TODO
-          val code = (first \ "code").as[String]
-          Json.obj(
-            "code" -> code,
-            "messages" -> errors.map { e =>
-              translateErrorCode( (e \ "code").as[String] )
-            }
-          )
-        }
+      val codes = errors.flatMap { js => (js \ "code").asOpt[String] }
+      codes.toList match {
         case Nil => {
           incoming
+        }
+
+        case firstCode :: _ => {
+          Json.obj(
+            "code" -> firstCode,
+            "messages" -> codes.map(translateErrorCode)
+          )
         }
       }
     }

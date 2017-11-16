@@ -11,7 +11,7 @@ class Translations @Inject() () {
     locale = "en_US",
     keys = Map(
       "invalid_cvn" -> "CVN is not valid",
-      "invalid_expiration" -> "Expiration date must be on or after {mm_yyyy}"
+      "invalid_expiration" -> "Expiration date must be on or after {{mm_yyyy}}"
     ),
     fallbackCatalog = None
   )
@@ -22,7 +22,7 @@ class Translations @Inject() () {
       locale = "en_FR",
       keys = Map(
         "invalid_cvn" -> "Le NVC n'est pas valide",
-        "invalid_expiration" -> "La date d'expiration doit etre apres {mm_yyyy}"
+        "invalid_expiration" -> "La date d'expiration doit etre apres {{mm_yyyy}}"
       ),
       fallbackCatalog = Some(DefaultTranslationCatalog)
     )
@@ -51,18 +51,18 @@ case class TranslationTarget(
   template: String
 ) {
 
-  private[this] val keys: Seq[String] = Seq(
+  private[this] val variables: Seq[String] = Seq(
     "mm_yyyy"
   )
 
   def substitute(values: Map[String, String]): String = {
-    val missing = keys.filterNot { key => values.isDefinedAt(key) }
+    val missing = variables.filterNot { key => values.isDefinedAt(key) }
     assert(
       missing.isEmpty,
       s"TranslationTarget[$key] with template[$template]: Missing translation keys: ${missing.mkString(",")}"
     )
 
-    keys.foldLeft(template) { case (value, k) =>
+    variables.foldLeft(template) { case (value, k) =>
       value.replace(s"{$k}", values(k))
     }
   }
@@ -75,12 +75,12 @@ case class TranslationCatalog(
   fallbackCatalog: Option[TranslationCatalog]
 ) {
 
-  private[this] val translationKeys: Map[String, TranslationTarget] = keys.map { case (k, v) =>
+  private[this] val translationTargets: Map[String, TranslationTarget] = keys.map { case (k, v) =>
       k -> TranslationTarget(k, v)
   }
 
   private def lookup(key: String): Option[TranslationTarget] = {
-    translationKeys.get(key) match {
+    translationTargets.get(key) match {
       case Some(value) => Some(value)
       case None => {
         Logger.warn(s"[TranslationCatalog] Key[$key] not found for locale[$locale]")

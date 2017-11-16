@@ -1,0 +1,23 @@
+{
+  "errors": [
+    {
+      "code": "card_expiration_month_invalid"
+    }
+  ]
+}
+
+locale: en_US
+{
+  "code": "invalid_expiration",
+  "messages": [
+    "Expiration month must be between 1 and 12"
+  ]
+}
+
+locale: en_FR
+{
+  "code": "invalid_expiration",
+  "messages": [
+    "Expiration month must be between 1 and 12"
+  ]
+}

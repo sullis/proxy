@@ -1,0 +1,23 @@
+{
+  "errors": [
+    {
+      "code": "card_number_unrecognized_type"
+    }
+  ]
+}
+
+locale: en_US
+{
+  "code": "invalid_number",
+  "messages": [
+    "Unrecognized card type"
+  ]
+}
+
+locale: en_FR
+{
+  "code": "invalid_number",
+  "messages": [
+    "Unrecognized card type"
+  ]
+}

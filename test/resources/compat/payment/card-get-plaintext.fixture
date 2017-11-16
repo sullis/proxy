@@ -1,0 +1,23 @@
+{
+  "errors": [
+    {
+      "code": "card_get_plaintext"
+    }
+  ]
+}
+
+locale: en_US
+{
+  "code": "unknown",
+  "messages": [
+    "When adding a card via HTTP GET, you must include the 'cipher' and not a cleartext number"
+  ]
+}
+
+locale: en_FR
+{
+  "code": "unknown",
+  "messages": [
+    "When adding a card via HTTP GET, you must include the 'cipher' and not a cleartext number"
+  ]
+}

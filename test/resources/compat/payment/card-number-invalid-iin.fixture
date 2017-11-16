@@ -1,0 +1,24 @@
+{
+  "errors": [
+    {
+      "code": "card_number_invalid_iin",
+      "iin": "1234"
+    }
+  ]
+}
+
+locale: en_US
+{
+  "code": "invalid_number",
+  "messages": [
+    "Card starting with '1234' is not recognized"
+  ]
+}
+
+locale: en_FR
+{
+  "code": "invalid_number",
+  "messages": [
+    "Card starting with '1234' is not recognized"
+  ]
+}

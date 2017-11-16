@@ -1,0 +1,24 @@
+{
+  "errors": [
+    {
+      "code": "card_number_invalid_chars",
+      "maskedCc": "XXXX1234"
+    }
+  ]
+}
+
+locale: en_US
+{
+  "code": "invalid_number",
+  "messages": [
+    "Card number XXXX1234 must contain numbers and letters only"
+  ]
+}
+
+locale: en_FR
+{
+  "code": "invalid_number",
+  "messages": [
+    "Card number XXXX1234 must contain numbers and letters only"
+  ]
+}

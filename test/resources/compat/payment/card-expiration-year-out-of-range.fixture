@@ -1,0 +1,24 @@
+{
+  "errors": [
+    {
+      "code": "card_expiration_year_out_of_range",
+      "maxYear": "2025"
+    }
+  ]
+}
+
+locale: en_US
+{
+  "code": "invalid_expiration",
+  "messages": [
+    "Expiration year must be before 2025"
+  ]
+}
+
+locale: en_FR
+{
+  "code": "invalid_expiration",
+  "messages": [
+    "Expiration year must be before 2025"
+  ]
+}

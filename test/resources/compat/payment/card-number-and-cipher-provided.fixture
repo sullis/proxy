@@ -1,0 +1,23 @@
+{
+  "errors": [
+    {
+      "code": "card_number_and_cipher_provided"
+    }
+  ]
+}
+
+locale: en_US
+{
+  "code": "unknown",
+  "messages": [
+    "You must provide either 'number' or 'cipher' and cannot provide both"
+  ]
+}
+
+locale: en_FR
+{
+  "code": "unknown",
+  "messages": [
+    "You must provide either 'number' or 'cipher' and cannot provide both"
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "errors": [
+    {
+      "code": "card_cipher_invalid"
+    }
+  ]
+}
+
+locale: en_US
+{
+  "code": "unknown",
+  "messages": [
+    "Invalid cipher - could not decrypt card number"
+  ]
+}
+
+locale: en_FR
+{
+  "code": "unknown",
+  "messages": [
+    "Invalid cipher - could not decrypt card number"
+  ]
+}

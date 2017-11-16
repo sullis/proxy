@@ -1,0 +1,25 @@
+{
+  "errors": [
+    {
+      "code": "card_expiration_already_expired",
+      "currentYear": "2017",
+      "currentMonth": "11"
+    }
+  ]
+}
+
+locale: en_US
+{
+  "code": "invalid_expiration",
+  "messages": [
+    "Expiration date must be on or after 11/2017"
+  ]
+}
+
+locale: en_FR
+{
+  "code": "invalid_expiration",
+  "messages": [
+    "Expiration date must be on or after 11/2017"
+  ]
+}

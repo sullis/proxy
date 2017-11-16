@@ -69,8 +69,18 @@ class RewriteErrorsSpec extends FunSpec with Matchers with OneServerPerSuite {
     }
   }
 
+  private[this] def getFiles(root: File, filter: File => Boolean): Seq[File] = {
+    root.listFiles().flatMap { file =>
+      file match {
+        case d if d.isDirectory() => getFiles(d, filter)
+        case f if filter(f) => Seq(f)
+        case _ => Nil
+      }
+    }
+  }
+
   it("examples") {
-    val files = Dir.listFiles.filter(_.getName.endsWith(".fixture"))
+    val files = getFiles(Dir, _.getName.endsWith(".fixture"))
     files.nonEmpty should be(true)
 
     files.foreach { file =>

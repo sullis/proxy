@@ -1,0 +1,23 @@
+{
+  "errors": [
+    {
+      "code": "card_name_missing"
+    }
+  ]
+}
+
+locale: en_US
+{
+  "code": "invalid_name",
+  "messages": [
+    "Cardholder name is required"
+  ]
+}
+
+locale: en_FR
+{
+  "code": "invalid_name",
+  "messages": [
+    "Cardholder name is required"
+  ]
+}

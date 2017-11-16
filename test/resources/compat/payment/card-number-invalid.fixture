@@ -1,0 +1,23 @@
+{
+  "errors": [
+    {
+      "code": "card_number_invalid"
+    }
+  ]
+}
+
+locale: en_US
+{
+  "code": "invalid_number",
+  "messages": [
+    "Card number is not valid"
+  ]
+}
+
+locale: en_FR
+{
+  "code": "invalid_number",
+  "messages": [
+    "Card number is not valid"
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "errors": [
+    {
+      "code": "card_number_missing"
+    }
+  ]
+}
+
+locale: en_US
+{
+  "code": "invalid_number",
+  "messages": [
+    "Card number cannot be empty"
+  ]
+}
+
+locale: en_FR
+{
+  "code": "invalid_number",
+  "messages": [
+    "Card number cannot be empty"
+  ]
+}

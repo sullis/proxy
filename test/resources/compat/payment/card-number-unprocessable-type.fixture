@@ -1,0 +1,23 @@
+{
+  "errors": [
+    {
+      "code": "card_number_unprocessable_type"
+    }
+  ]
+}
+
+locale: en_US
+{
+  "code": "invalid_number",
+  "messages": [
+    "Unprocessable card type"
+  ]
+}
+
+locale: en_FR
+{
+  "code": "invalid_number",
+  "messages": [
+    "Unprocessable card type"
+  ]
+}

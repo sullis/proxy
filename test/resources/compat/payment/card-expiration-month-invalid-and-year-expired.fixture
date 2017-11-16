@@ -1,0 +1,24 @@
+{
+  "errors": [
+    {
+      "code": "card_expiration_month_invalid_and_year_expired",
+      "currentYear": "2017"
+    }
+  ]
+}
+
+locale: en_US
+{
+  "code": "invalid_expiration",
+  "messages": [
+    "Expiration month must be between 1 and 12 and year must be >= 2017"
+  ]
+}
+
+locale: en_FR
+{
+  "code": "invalid_expiration",
+  "messages": [
+    "Expiration month must be between 1 and 12 and year must be >= 2017"
+  ]
+}

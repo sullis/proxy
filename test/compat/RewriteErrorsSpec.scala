@@ -3,11 +3,13 @@ package compat
 import java.io.File
 
 import org.scalatest.{FunSpec, Matchers}
+import org.scalatestplus.play.OneServerPerSuite
 import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
 
-class RewriteErrorsSpec extends FunSpec with Matchers {
+class RewriteErrorsSpec extends FunSpec with Matchers with OneServerPerSuite {
 
-  private[this] lazy val rewriteErrors = new RewriteErrors()
+  private[this] def translations = app.injector.instanceOf[Translations]
+  private[this] def rewriteErrors = app.injector.instanceOf[RewriteErrors]
 
   private[this] val Dir: File = {
     val d = new File("test/resources/compat")
@@ -71,30 +73,37 @@ class RewriteErrorsSpec extends FunSpec with Matchers {
   it("examples") {
     val files = Dir.listFiles.filter(_.getName.endsWith(".fixture"))
     files.nonEmpty should be(true)
+
     files.foreach { file =>
       val fixture = Fixture.load(file)
-      val transformed = rewriteErrors.rewrite(fixture.original)
 
-      val differences = diff(fixture.expected, transformed)
-      if (differences.nonEmpty) {
-        println("")
-        println("EXPECTED")
-        println("----------------------------------------")
-        println(Json.prettyPrint(fixture.expected))
+      fixture.testCases.
+        filter(_.locale=="en_FR").
+        foreach { testCase =>
+        val catalog = translations.locale(testCase.locale)
+        println(s"locale[${testCase.locale}] => $catalog")
+        val transformed = rewriteErrors.rewrite(catalog, fixture.original)
+        val differences = diff(testCase.expected, transformed)
+        if (differences.nonEmpty) {
+          println("")
+          println("EXPECTED")
+          println("----------------------------------------")
+          println(Json.prettyPrint(testCase.expected))
 
-        println("")
-        println("ACTUAL")
-        println("----------------------------------------")
-        println(Json.prettyPrint(transformed))
+          println("")
+          println("ACTUAL")
+          println("----------------------------------------")
+          println(Json.prettyPrint(transformed))
 
-        println("")
-        println("DIFFERENCES")
-        println("----------------------------------------")
-        differences.foreach { d =>
-          println(s" - $d")
+          println("")
+          println("DIFFERENCES")
+          println("----------------------------------------")
+          differences.foreach { d =>
+            println(s" - $d")
+          }
+
+          sys.error(s"$Dir/${file.getName} Locale[${testCase.locale}]: JsValue did not match expected")
         }
-
-        sys.error(s"$Dir/${file.getName}: JsValue did not match expected")
       }
     }
   }

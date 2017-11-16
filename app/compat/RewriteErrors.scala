@@ -11,11 +11,18 @@ sealed trait RewriteHandler {
 
 object RewriteHandler {
 
-  case class Passthrough(incoming: JsObject) extends RewriteHandler {
+  case class Passthrough(
+    catalog: TranslationCatalog,
+    incoming: JsObject
+  ) extends RewriteHandler {
     override def rewrite(): JsValue = incoming
   }
 
-  case class SingleErrorsArray(incoming: JsValue, errors: Seq[JsObject]) extends RewriteHandler {
+  case class SingleErrorsArray(
+    catalog: TranslationCatalog,
+    incoming: JsValue,
+    errors: Seq[JsObject]
+  ) extends RewriteHandler {
     override def rewrite(): JsValue = {
       val codes = errors.flatMap { js => (js \ "code").asOpt[String] }
       codes.toList match {
@@ -26,19 +33,14 @@ object RewriteHandler {
         case firstCode :: _ => {
           Json.obj(
             "code" -> firstCode,
-            "messages" -> codes.map(translateErrorCode)
+            "messages" -> codes.map { c =>
+              catalog.lookup(c).getOrElse {
+                Logger.warn(s"FlowProxyMissingTranslation Unhandled translation for error code[$c]")
+                c
+              }
+            }
           )
         }
-      }
-    }
-  }
-
-  private[this] def translateErrorCode(code: String): String = {
-    code match {
-      case "invalid_cvn" => "CVN is not valid"
-      case other => {
-        Logger.warn(s"FlowProxyMissingTranslation Unhandled translation for error code[$code]")
-        other
       }
     }
   }
@@ -47,35 +49,49 @@ object RewriteHandler {
 @Singleton
 class RewriteErrors @Inject() () {
 
-  def rewrite(incoming: JsValue): JsValue = {
+  def rewrite(
+    catalog: TranslationCatalog,
+    incoming: JsValue
+  ): JsValue = {
     incoming.asOpt[JsObject] match {
       case None => incoming
-      case Some(o) => selectHandler(o).rewrite()
+      case Some(o) => selectHandler(catalog, o).rewrite()
     }
   }
 
-  def selectHandler(incoming: JsObject): RewriteHandler = {
+  def selectHandler(
+    catalog: TranslationCatalog,
+    incoming: JsObject
+  ): RewriteHandler = {
     incoming.value.keys.toSeq.sorted.toList match {
       case Seq("code", "messages") => {
-        RewriteHandler.Passthrough(incoming)
+        RewriteHandler.Passthrough(catalog, incoming)
       }
+
       case Seq("errors") => {
         val values = (incoming \ "errors").asOpt[JsArray].map(_.value).getOrElse(Nil)
         val objects = values.flatMap(_.asOpt[JsObject])
         if (values.length == objects.length) {
           RewriteHandler.SingleErrorsArray(
+            catalog = catalog,
             incoming = incoming,
             errors = objects
           )
         } else {
           Logger.warn(s"errors list contained elements that were NOT objects. Using passthrough handler: $values")
-          RewriteHandler.Passthrough(incoming)
+          RewriteHandler.Passthrough(
+            catalog = catalog,
+            incoming
+          )
         }
       }
 
       case other => {
         Logger.warn(s"Could not identify explicit handler for object with keys[${other.mkString(", ")}] - Using passthrough")
-        RewriteHandler.Passthrough(incoming)
+        RewriteHandler.Passthrough(
+          catalog = catalog,
+          incoming
+        )
       }
     }
 

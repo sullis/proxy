@@ -1,4 +1,5 @@
-# Make sure that older error messages pre migration pass through untouched
+# Make sure that older error messages pre migration pass
+# through w/ same structure, but translated
 
 {
   "code": "generic_error",
@@ -7,9 +8,18 @@
   ]
 }
 
+locale: en_US
 {
   "code": "generic_error",
   "messages": [
     "Year must be >= 2017"
+  ]
+}
+
+locale: en_FR
+{
+  "code": "generic_error",
+  "messages": [
+    "L'Annee doit etre >= 2017"
   ]
 }

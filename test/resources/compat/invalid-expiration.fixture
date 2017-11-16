@@ -1,0 +1,13 @@
+{
+  "errors": [
+     {
+       "code": "invalid_expiration"
+     }
+  ]
+}
+
+locale:en_US
+{
+  "code":"invalid_expiration",
+  "messages":["Expiration date must be on or after 11/2017"]
+}

@@ -55,7 +55,7 @@ object RewriteHandler {
           Json.toJson(
             js.value ++ Map(
               "message" -> JsString(
-                catalog.lookup(errorCode).getOrElse {
+                catalog.translate(errorCode).getOrElse {
                   (js \ "message").asOpt[String].getOrElse(errorCode)
                 }
               )

@@ -6,9 +6,18 @@
   ]
 }
 
+locale: en_US
 {
   "code": "invalid_cvn",
   "messages": [
     "CVN is not valid"
+  ]
+}
+
+locale: en_FR
+{
+  "code": "invalid_cvn",
+  "messages": [
+    "Le NVC n'est pas valide"
   ]
 }

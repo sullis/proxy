@@ -1,0 +1,23 @@
+{
+  "errors": [
+    {
+      "code": "address_incomplete"
+    }
+  ]
+}
+
+locale: en_US
+{
+  "code": "generic_error",
+  "messages": [
+    "Could not validate address with information provided. Provide a complete address, including country, province or city, postal, and street"
+  ]
+}
+
+locale: en_FR
+{
+  "code": "generic_error",
+  "messages": [
+    "Could not validate address with information provided. Provide a complete address, including country, province or city, postal, and street"
+  ]
+}

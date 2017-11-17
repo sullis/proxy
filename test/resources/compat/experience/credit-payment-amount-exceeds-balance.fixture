@@ -1,0 +1,25 @@
+{
+  "errors": [
+    {
+      "code": "credit_payment_amount_exceeds_balance",
+      "amount": "100",
+      "balance": "50"
+    }
+  ]
+}
+
+locale: en_US
+{
+  "code": "amount_exceeds_balance",
+  "messages": [
+    "Credit amount '100' cannot exceed order balance '50'"
+  ]
+}
+
+locale: en_FR
+{
+  "code": "amount_exceeds_balance",
+  "messages": [
+    "Credit amount '100' cannot exceed order balance '50'"
+  ]
+}

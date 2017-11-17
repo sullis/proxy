@@ -1,0 +1,23 @@
+{
+  "errors": [
+    {
+      "code": "order_already_exists"
+    }
+  ]
+}
+
+locale: en_US
+{
+  "code": "generic_error",
+  "messages": [
+    "An order with the specified number already exists"
+  ]
+}
+
+locale: en_FR
+{
+  "code": "generic_error",
+  "messages": [
+    "An order with the specified number already exists"
+  ]
+}

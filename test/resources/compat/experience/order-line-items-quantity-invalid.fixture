@@ -1,0 +1,22 @@
+{
+  "errors": [
+    {
+      "code": "order_line_items_quantity_invalid"
+    }
+  ]
+}
+
+locale: en_US
+{
+  "code": "generic_error",
+  "messages": [
+    "Item quantities must be >= 0"
+  ]
+}
+
+locale: en_FR
+{
+  "code": "generic_error",
+  "messages": [
+    "Item quantities must be >= 0"
+  ]

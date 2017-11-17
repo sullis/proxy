@@ -1,0 +1,23 @@
+{
+  "errors": [
+    {
+      "code": "order_line_items_missing"
+    }
+  ]
+}
+
+locale: en_US
+{
+  "code": "generic_error",
+  "messages": [
+    "Must have at least 1 item to create an order"
+  ]
+}
+
+locale: en_FR
+{
+  "code": "generic_error",
+  "messages": [
+    "Must have at least 1 item to create an order"
+  ]
+}

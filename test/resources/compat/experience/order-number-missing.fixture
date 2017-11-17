@@ -1,0 +1,23 @@
+{
+  "errors": [
+    {
+      "code": "order_number_missing"
+    }
+  ]
+}
+
+locale: en_US
+{
+  "code": "generic_error",
+  "messages": [
+    "Number cannot be blank"
+  ]
+}
+
+locale: en_FR
+{
+  "code": "generic_error",
+  "messages": [
+    "Number cannot be blank"
+  ]
+}

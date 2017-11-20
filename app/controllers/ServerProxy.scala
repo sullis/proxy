@@ -23,13 +23,19 @@ import lib._
 import play.api.libs.json.{JsObject, JsValue, Json}
 
 import scala.annotation.tailrec
-import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
+import scala.concurrent.duration.{FiniteDuration, MILLISECONDS, SECONDS}
 import akka.stream.scaladsl.StreamConverters
 
 case class ServerProxyDefinition(
   server: Server,
   multiService: io.apibuilder.validation.MultiService // TODO Move higher level
 ) {
+
+  val requestTimeout: FiniteDuration = server.name match {
+    case "payment" | "payment-internal" | "partner" | "label" | "label-internal" => FiniteDuration(60, SECONDS)
+    case "token" | "session" | "organization" => FiniteDuration(5, SECONDS)
+    case _ => FiniteDuration(10, SECONDS)
+  }
 
   val hostHeaderValue: String = Option(new URI(server.host).getHost).getOrElse {
     sys.error(s"Could not parse host from server[$server]")
@@ -303,6 +309,7 @@ class ServerProxyImpl @Inject()(
             req
               .withHeaders(setApplicationJsonContentType(finalHeaders).headers: _*)
               .withBody(validatedBody)
+              .withRequestTimeout(definition.requestTimeout)
               .stream
               .recover { case ex: Throwable => throw new Exception(ex) }
           }
@@ -346,6 +353,7 @@ class ServerProxyImpl @Inject()(
                 req
                   .withHeaders(setApplicationJsonContentType(finalHeaders).headers: _*)
                   .withBody(validatedBody)
+                  .withRequestTimeout(definition.requestTimeout)
                   .stream
                   .recover { case ex: Throwable => throw new Exception(ex) }
               }
@@ -374,6 +382,7 @@ class ServerProxyImpl @Inject()(
             req
               .withHeaders(finalHeaders.headers: _*)
               .withBody(bytes)
+              .withRequestTimeout(definition.requestTimeout)
               .stream
               .recover { case ex: Throwable => throw new Exception(ex) }
           }
@@ -382,6 +391,7 @@ class ServerProxyImpl @Inject()(
             req
               .withHeaders(finalHeaders.headers: _*)
               .withBody(json)
+              .withRequestTimeout(definition.requestTimeout)
               .stream
               .recover { case ex: Throwable => throw new Exception(ex) }
           }

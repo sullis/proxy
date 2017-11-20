@@ -77,7 +77,7 @@ class RewriteErrorsSpec extends FunSpec with Matchers with OneServerPerSuite {
       val fixture = Fixture.load(file)
 
       fixture.testCases.foreach { testCase =>
-        val transformed = rewriteErrors.rewrite(testCase.locale, fixture.original)
+        val transformed = rewriteErrors.rewrite(testCase.locale, fixture.input.body)
         val differences = diff(testCase.expected, transformed)
         if (differences.nonEmpty) {
           println("")

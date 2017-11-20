@@ -4,13 +4,20 @@ import java.io.File
 
 import play.api.libs.json.{JsObject, Json}
 
+case class FixtureInput(
+  method: String,
+  path: String,
+  responseCode: Int,
+  body: JsObject
+)
+
 case class FixtureTestCase(
   locale: String,
   expected: JsObject
 )
 
 case class Fixture(
-  original: JsObject,
+  input: FixtureInput,
   testCases: Seq[FixtureTestCase]
 )
 
@@ -19,24 +26,50 @@ object Fixture {
   private[this] val CommentCharacter = "#"
 
   def load(file: File): Fixture = {
-    scala.io.Source.fromFile(file).getLines.mkString("\n").
-      split("\n").map(_.trim).filter { l => !l.startsWith(CommentCharacter) }.mkString("\n").
-      trim.split("\n\n").toList match {
-      case original :: rest => {
-        Fixture(
-          original = Json.parse(original).as[JsObject],
-          testCases = rest.map(parseTestCase)
-        )
+    scala.io.Source.fromFile(file).getLines.
+      map(_.trim).
+      filter { l => !l.startsWith(CommentCharacter) }.
+      mkString("\n").
+      trim.
+      split("\n\n").
+      toList match {
+        case src :: rest => {
+          val input = parseInput(src)
+          Fixture(
+            input = input,
+            testCases = rest.map(parseTestCase)
+          )
+        }
+        case _ => sys.error(s"File[$file] Could not parse contents - no newline found")
+    }
+  }
+
+  private[this] def parseInput(value: String): FixtureInput = {
+    value.trim.split("\n").toList match {
+      case pathLine :: rest => {
+        pathLine.split(" ").toList match {
+          case method :: path :: code :: Nil => {
+            FixtureInput(
+              method = method,
+              path = path,
+              responseCode = code.toInt,
+              Json.parse(rest.mkString("\n")).asInstanceOf[JsObject]
+            )
+          }
+
+          case _ => sys.error(s"Invalid path line: $pathLine")
+        }
       }
-      case _ => sys.error(s"File[$file] Could not parse contents - no newline found")
+
+      case _ => sys.error(s"Could not parse input: $value")
     }
   }
 
   private[this] def parseTestCase(value: String): FixtureTestCase = {
-    value.split("\n").toList match {
+    value.trim.split("\n").toList match {
       case localeLine :: json => {
         if (!localeLine.startsWith("locale:")) {
-          sys.error(s"Missing locale for test case: $value")
+          sys.error(s"Expected first line of test case to start with locale: $localeLine")
         }
         val locale: String = localeLine.split(":").last.trim
         FixtureTestCase(
@@ -44,9 +77,8 @@ object Fixture {
           expected = Json.parse(json.mkString("\n")).as[JsObject]
         )
       }
-      case _ => {
-        sys.error(s"Missing locale for test case: $value")
-      }
+
+      case _ => sys.error(s"Missing locale for test case: $value")
     }
   }
 

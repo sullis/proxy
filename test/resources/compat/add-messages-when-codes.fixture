@@ -1,8 +1,8 @@
+POST /:organization/authorizations/card 422
 {
-  "errors": [
-    {
-      "code": "invalid_cvn"
-    }
+  "code": "invalid_cvn",
+  "messages": [
+    "CVN is not valid"
   ]
 }
 
@@ -18,6 +18,6 @@ locale: en_FR
 {
   "code": "invalid_cvn",
   "messages": [
-    "Le NVC n'est pas valide"
+    "Le code de securite n'est pas valide"
   ]
 }

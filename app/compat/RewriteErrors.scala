@@ -1,7 +1,7 @@
 package compat
 
 import javax.inject.{Inject, Singleton}
-
+import io.apibuilder.spec.v0.models.Response
 import play.api.libs.json._
 
 sealed trait RewriteHandler {
@@ -17,10 +17,13 @@ object RewriteHandler {
   }
 
   case class TranslationHandler(
+    response: Response,
     catalog: TranslationCatalog
   ) extends RewriteHandler {
 
     override def rewrite(incoming: JsObject): JsObject = {
+      println(s"response.`type`: ${response.`type`}")
+
       Json.toJson(
         incoming.value.map { case (key, v) =>
           key -> (
@@ -49,7 +52,7 @@ object RewriteHandler {
 
     private[this] def translateError(js: JsObject): JsObject = {
       (js \ "code").asOpt[String] match {
-        case None => js
+        case None => jsInternalD
         case Some(errorCode) => {
           // Inject our translated message here
           Json.toJson(
@@ -67,35 +70,15 @@ object RewriteHandler {
 
   }
 
-  case object RewriteErrors extends RewriteHandler {
-    override def rewrite(incoming: JsObject): JsObject = {
-      incoming.value.keys.toList match {
-        case "errors" :: Nil => {
-          incoming.value("errors") match {
-            case a: JsArray => rewriteErrors(a.value)
-            case _ => incoming
-
-          }
-        }
-        case _ => incoming
-      }
-    }
-
-    private[this] def rewriteErrors(errors: Seq[JsValue]): JsObject = {
-      val codes: Seq[String] = errors.flatMap { js => (js \ "code").asOpt[String] }
-
-      Json.obj(
-        "code" -> JsString(codes.headOption.getOrElse("generic_error")),
-        "messages" -> errors.flatMap { js => (js \ "message").asOpt[String] }
-      )
-    }
-  }
 }
 
 @Singleton
-class RewriteErrors @Inject() (translations: Translations) {
+class RewriteErrors @Inject() (
+  translations: Translations
+) {
 
   def rewrite(
+    response: Response,
     locale: String,
     incoming: JsValue
   ): JsValue = {
@@ -103,8 +86,7 @@ class RewriteErrors @Inject() (translations: Translations) {
       case None => incoming
       case Some(o) => {
         val handlers = Seq(
-          RewriteHandler.TranslationHandler(translations.locale(locale)),
-          RewriteHandler.RewriteErrors
+          RewriteHandler.TranslationHandler(response, translations.locale(locale))
         )
 
         handlers.foldLeft(o) { case (js, handler) =>

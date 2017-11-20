@@ -21,7 +21,7 @@ class Translations @Inject() () {
     TranslationCatalog(
       locale = "en_FR",
       keys = Map(
-        "invalid_cvn" -> "Le NVC n'est pas valide",
+        "invalid_cvn" -> "Le code de securite n'est pas valide",
         "invalid_expiration" -> "La date d'expiration doit etre apres {{mm_yyyy}}"
       ),
       fallbackCatalog = Some(DefaultTranslationCatalog)

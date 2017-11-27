@@ -4,8 +4,6 @@ organization := "io.flow"
 
 scalaVersion in ThisBuild := "2.11.11"
 
-newrelicConfig := (resourceDirectory in Compile).value / "newrelic.yml"
-
 lazy val root = project
   .in(file("."))
   .enablePlugins(PlayScala)
@@ -33,6 +31,7 @@ lazy val commonSettings: Seq[Setting[_]] = Seq(
   name ~= ("proxy-" + _),
   scalacOptions += "-feature",
   javaOptions in Test += "-Dconfig.file=conf/application.test.conf",
+  newrelicConfig := (resourceDirectory in Compile).value / "newrelic.yml",
   sources in (Compile,doc) := Seq.empty,
   publishArtifact in (Compile, packageDoc) := false,
   credentials += credsToUse,

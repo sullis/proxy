@@ -13,8 +13,7 @@ import actors.MetricActor
 import akka.stream.ActorMaterializer
 import io.apibuilder.spec.v0.models.ParameterLocation
 import play.api.Logger
-import play.api.libs.ws.WSResponse
-import play.api.libs.ws.WSClient
+import play.api.libs.ws.{WSResponse, WSClient}
 import play.api.mvc._
 
 import scala.concurrent.{ExecutionContext, Future}

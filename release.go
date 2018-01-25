@@ -1,9 +1,12 @@
 package main
 
 import (
-	"github.com/flowcommerce/tools/scala_library"
+	"github.com/flowcommerce/tools/executor"
 )
 
 func main() {
-	scala_library.Run()
+	executor := executor.Create("proxy")
+	executor = executor.Add("dev tag")
+	executor = executor.Add("dev build_docker_image")
+	executor.Run()
 }

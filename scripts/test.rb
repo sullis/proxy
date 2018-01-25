@@ -32,6 +32,25 @@ def cleanup(helpers)
   delete_test_orgs(helpers, PARENT_ORGANIZATION_ID, TEST_ORG_PREFIX)
 end
 
+def wait_for_status(status, interval = 5, seconds = 90, &block)
+  finish = Time.now.to_i + seconds
+
+  response = nil
+  while response.nil? && Time.now.to_i < finish
+    sleep(interval)
+    r = block.call
+    if r.status == 201
+      response = r
+    end
+  end
+
+  if response.nil?
+    raise "Failed to get a status[%s] after % seconds" % [status, seconds]
+  end
+
+  response
+end
+
 uri = ARGV.shift.to_s.strip
 if uri == ""
   uri = "http://localhost:7000"
@@ -110,16 +129,12 @@ response = helpers.json_post("/organizations/#{id}?envelope=request", { :method 
 assert_unauthorized(response)
 
 # Start session testing
-seconds = 15
-puts "Waiting %s seconds for organization to propagate to session service itself" % seconds
-sleep(seconds)
-
-response = helpers.json_post("/sessions/organizations/#{id}").execute
+response = wait_for_status(201) { helpers.json_post("/sessions/organizations/#{id}").execute }
 assert_status(201, response)
 session_id = response.json['id']
 assert_not_nil(session_id)
 
-response = helpers.get("/#{id}/countries").with_header("Authorization", "session %s" % session_id).execute
+response = wait_for_status(200) { helpers.get("/#{id}/countries").with_header("Authorization", "session %s" % session_id).execute }
 assert_status(200, response)
 
 response = helpers.get("/#{id}/countries").execute

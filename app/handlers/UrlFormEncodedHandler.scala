@@ -26,20 +26,23 @@ class UrlFormEncodedHandler @Inject() (
   )(
     implicit ec: ExecutionContext
   ): Future[Result] = {
-    val newBody = FormData.parseEncodedToJsObject(
-      request.bodyUtf8.getOrElse {
-        // TODO: Return 422 on invalid content herek
-        sys.error(s"Request[${request.requestId}] Failed to serialize body as string for ContentType.UrlFormEncoded")
-      }
-    )
+    request.bodyUtf8 match {
+      case None => Future.successful(
+        request.responseUnprocessableEntity(
+          "Url form encoded requests must contain body encoded in ;UTF-8'"
+        )
+      )
 
-    applicationJsonHandler.processJson(
-      definition,
-      request,
-      route,
-      token,
-      newBody
-    )
+      case Some(body) => {
+        applicationJsonHandler.processJson(
+          definition,
+          request,
+          route,
+          token,
+          FormData.parseEncodedToJsObject(body)
+        )
+      }
+    }
   }
 
 }

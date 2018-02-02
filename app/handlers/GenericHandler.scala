@@ -44,14 +44,14 @@ class GenericHandler @Inject() (
 
     body match {
       case None => {
-        process(request, wsRequest.stream())
+        processResponse(request, wsRequest.stream())
       }
 
       case Some(ProxyRequestBody.File(file)) => {
         request.method.toUpperCase match {
-          case "POST" => process(request, wsRequest.post(file))
-          case "PUT" => process(request, wsRequest.put(file))
-          case "PATCH" => process(request, wsRequest.patch(file))
+          case "POST" => processResponse(request, wsRequest.post(file))
+          case "PUT" => processResponse(request, wsRequest.put(file))
+          case "PATCH" => processResponse(request, wsRequest.patch(file))
           case _ => Future.successful(
             request.responseUnprocessableEntity(s"Invalid method for body with file. Must be POST, PUT, or PATCH and not '${request.method}'")
           )
@@ -59,13 +59,13 @@ class GenericHandler @Inject() (
       }
 
       case Some(ProxyRequestBody.Bytes(bytes)) => {
-        process(request, wsRequest.withBody(bytes).stream())
+        processResponse(request, wsRequest.withBody(bytes).stream())
       }
 
       case Some(ProxyRequestBody.Json(json)) => {
         logFormData(definition, request, json)
 
-        process(
+        processResponse(
           request,
           setContentTypeHeader(wsRequest, ContentType.ApplicationJson)
             .withBody(json)
@@ -75,32 +75,29 @@ class GenericHandler @Inject() (
     }
   }
 
-  private[this] def process(
+  private[this] def processResponse(
     request: ProxyRequest,
     response: Future[WSResponse]
   )(
     implicit ec: ExecutionContext
   ): Future[Result] = {
-    response
-      .map(processResponse(request, _))
-      .recover { case ex: Throwable => throw new Exception(ex) }
-  }
-
-
-  private[this] def processResponse(request: ProxyRequest, response: WSResponse): Result = {
-    if (request.responseEnvelope) {
-      request.response(response.status, response.body, response.headers)
-    } else {
-      val contentType = response.headers.get("Content-Type").flatMap(_.headOption).getOrElse("application/octet-stream")
-      // If there's a content length, send that, otherwise return the body chunked
-      response.headers.get("Content-Length") match {
-        case Some(Seq(length)) =>
-          Results.Status(response.status).sendEntity(
-            HttpEntity.Streamed(response.bodyAsSource, Some(length.toLong), Some(contentType))
-          )
-        case _ =>
-          Results.Status(response.status).chunked(response.bodyAsSource).as(contentType)
+    response.map { response =>
+      if (request.responseEnvelope) {
+        request.response(response.status, response.body, response.headers)
+      } else {
+        val contentType = response.headers.get("Content-Type").flatMap(_.headOption).getOrElse("application/octet-stream")
+        // If there's a content length, send that, otherwise return the body chunked
+        response.headers.get("Content-Length") match {
+          case Some(Seq(length)) =>
+            Results.Status(response.status).sendEntity(
+              HttpEntity.Streamed(response.bodyAsSource, Some(length.toLong), Some(contentType))
+            )
+          case _ =>
+            Results.Status(response.status).chunked(response.bodyAsSource).as(contentType)
+        }
       }
+    }.recover {
+      case ex: Throwable => throw new Exception(ex)
     }
   }
 

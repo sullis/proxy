@@ -44,40 +44,50 @@ class GenericHandler @Inject() (
 
     body match {
       case None => {
-        wsRequest
-          .stream()
-          .map(processResponse(request, _))
-          .recover { case ex: Throwable => throw new Exception(ex) }
+        process(request, wsRequest.stream())
       }
 
       case Some(ProxyRequestBody.File(file)) => {
-        wsRequest
-          .post(file)
-          .map(processResponse(request, _))
-          .recover { case ex: Throwable => throw new Exception(ex) }
+        request.method.toUpperCase match {
+          case "POST" => process(request, wsRequest.post(file))
+          case "PUT" => process(request, wsRequest.put(file))
+          case "PATCH" => process(request, wsRequest.patch(file))
+          case _ => Future.successful(
+            request.responseUnprocessableEntity(s"Invalid method for body with file. Must be POST, PUT, or PATCH and not '${request.method}'")
+          )
+        }
       }
 
       case Some(ProxyRequestBody.Bytes(bytes)) => {
-        wsRequest
-          .withBody(bytes)
-          .stream
-          .map(processResponse(request, _))
-          .recover { case ex: Throwable => throw new Exception(ex) }
+        process(request, wsRequest.withBody(bytes).stream())
       }
 
       case Some(ProxyRequestBody.Json(json)) => {
         logFormData(definition, request, json)
 
-        setContentTypeHeader(wsRequest, ContentType.ApplicationJson)
-          .withBody(json)
-          .stream
-          .map(processResponse(request, _))
-          .recover { case ex: Throwable => throw new Exception(ex) }
+        process(
+          request,
+          setContentTypeHeader(wsRequest, ContentType.ApplicationJson)
+            .withBody(json)
+            .stream
+        )
       }
     }
   }
 
-  private[this] def processResponse(request: ProxyRequest, response: WSResponse) = {
+  private[this] def process(
+    request: ProxyRequest,
+    response: Future[WSResponse]
+  )(
+    implicit ec: ExecutionContext
+  ): Future[Result] = {
+    response
+      .map(processResponse(request, _))
+      .recover { case ex: Throwable => throw new Exception(ex) }
+  }
+
+
+  private[this] def processResponse(request: ProxyRequest, response: WSResponse): Result = {
     if (request.responseEnvelope) {
       request.response(response.status, response.body, response.headers)
     } else {

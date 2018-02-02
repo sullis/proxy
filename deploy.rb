@@ -63,7 +63,7 @@ end
 
 # CANARY for play 2.6
 puts "Only deploying to node 1 for play 2.6 upgrade"
-nodes = [nodes.first]
+nodes = [nodes.first, nodes.last]
 
 # Installs and starts software
 def deploy(node, version)

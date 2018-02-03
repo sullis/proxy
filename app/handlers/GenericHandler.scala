@@ -85,7 +85,17 @@ class GenericHandler @Inject() (
       if (request.responseEnvelope) {
         request.response(response.status, response.body, response.headers)
       } else {
-        val contentType = response.headers.get("Content-Type").flatMap(_.headOption).getOrElse("application/octet-stream")
+        /**
+          * Returns the content type of the request. WS Client defaults to
+          * application/octet-stream. Given this proxy is for APIs only,
+          * assume application / JSON if no content type header is
+          * provided.
+          */
+        val contentType: String = response.headers.
+          get("Content-Type").
+          flatMap(_.headOption).
+          getOrElse(ContentType.ApplicationJson.toString)
+
         // If there's a content length, send that, otherwise return the body chunked
         response.headers.get("Content-Length") match {
           case Some(Seq(length)) =>

@@ -1,6 +1,8 @@
 package handlers
 
 import controllers.ServerProxyDefinition
+import io.apibuilder.spec.v0.models.ParameterLocation
+import io.apibuilder.validation.MultiService
 import lib._
 import play.api.Logger
 import play.api.libs.json.{JsObject, JsValue, Json}
@@ -28,8 +30,8 @@ trait HandlerUtilities extends Errors {
       .withMethod(route.method)
       .withRequestTimeout(definition.requestTimeout)
       .addQueryStringParameters(
-        definition.definedQueryParameters(
-          route.method, route.path, request.queryParametersAsSeq()
+        definedQueryParameters(
+          request, definition.multiService, route, request.queryParametersAsSeq()
         ): _*
       )
       .addHttpHeaders(
@@ -124,6 +126,36 @@ trait HandlerUtilities extends Errors {
     val cleanHeaders = Constants.Headers.namesToRemove.foldLeft(request.headers) { case (h, n) => h.remove(n) }
 
     headersToAdd.foldLeft(cleanHeaders) { case (h, addl) => h.add(addl) }
+  }
+
+  /**
+    * Returns the subset of query parameters that are documented as acceptable for this method
+    */
+  def definedQueryParameters(
+    request: ProxyRequest,
+    multiService: MultiService,
+    route: Route,
+    allQueryParameters: Seq[(String, String)]
+  ): Seq[(String, String)] = {
+    if (request.requestEnvelope) {
+      // before we can always filter out defined query parameters,
+      // need to first fix bug in api-build that removes order of
+      // operations
+      multiService.parametersFromPath(route.method, route.path) match {
+        case None => {
+          allQueryParameters
+        }
+
+        case Some(parameters) => {
+          val definedNames = parameters.filter { p =>
+            p.location == ParameterLocation.Query
+          }.map(_.name)
+          allQueryParameters.filter { case (key, _) => definedNames.contains(key) }
+        }
+      }
+    } else {
+      allQueryParameters
+    }
   }
 
 }

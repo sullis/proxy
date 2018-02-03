@@ -43,28 +43,6 @@ case class ServerProxyDefinition(
     sys.error(s"Could not parse host from server[$server]")
   }
 
-  /**
-    * Returns the subset of query parameters that are documented as acceptable for this method
-    */
-  def definedQueryParameters(
-    method: String,
-    path: String,
-    allQueryParameters: Seq[(String, String)]
-  ): Seq[(String, String)] = {
-    multiService.parametersFromPath(method, path) match {
-      case None => {
-        allQueryParameters
-      }
-
-      case Some(parameters) => {
-        val definedNames = parameters.filter { p =>
-          p.location == ParameterLocation.Query
-        }.map(_.name)
-        allQueryParameters.filter { case (key, _) => definedNames.contains(key) }
-      }
-    }
-  }
-
 }
 
 /**

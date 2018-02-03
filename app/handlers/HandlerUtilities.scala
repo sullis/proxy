@@ -137,24 +137,29 @@ trait HandlerUtilities extends Errors {
     route: Route,
     allQueryParameters: Seq[(String, String)]
   ): Seq[(String, String)] = {
-    multiService.operation(route.method, route.path) match {
-      case None => {
-        allQueryParameters
-      }
+    if (request.requestEnvelope) => {
+      // For request envelopes - we ONLY proxy parameters defined in the spec
+      multiService.operation(route.method, route.path) match {
+        case None => {
+          allQueryParameters
+        }
 
-      case Some(operation) => {
-        val definedNames = operation.parameters.filter { p =>
-          p.location == ParameterLocation.Query
-        }.map(_.name)
+        case Some(operation) => {
+          val definedNames = operation.parameters.filter { p =>
+            p.location == ParameterLocation.Query
+          }.map(_.name)
 
-        allQueryParameters.filter { case (key, _) =>
-          val isDefined = definedNames.contains(key)
-          if (!isDefined) {
-            Logger.info(s"[HandlerUtilities $request] Filtering out query parameter[$key] as it is not defined as part of the spec")
+          allQueryParameters.filter { case (key, _) =>
+            val isDefined = definedNames.contains(key)
+            if (!isDefined) {
+              Logger.info(s"[HandlerUtilities $request] Filtering out query parameter[$key] as it is not defined as part of the spec")
+            }
+            isDefined
           }
-          isDefined
         }
       }
+    } else {
+      allQueryParameters
     }
   }
 

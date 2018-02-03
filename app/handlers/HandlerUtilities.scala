@@ -137,7 +137,7 @@ trait HandlerUtilities extends Errors {
     route: Route,
     allQueryParameters: Seq[(String, String)]
   ): Seq[(String, String)] = {
-    if (request.requestEnvelope) => {
+    if (request.requestEnvelope) {
       // For request envelopes - we ONLY proxy parameters defined in the spec
       multiService.operation(route.method, route.path) match {
         case None => {

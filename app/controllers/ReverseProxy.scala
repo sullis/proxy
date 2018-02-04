@@ -52,8 +52,6 @@ class ReverseProxy @Inject () (
     new TokenClient(ws, baseUrl = server.host)
   }
 
-  private[this] val multiService = apiBuilderServicesFetcher.current()
-
   private[this] val proxies: Map[String, ServerProxy] = {
     Logger.info(s"ReverseProxy loading config sources: ${index.config.sources}")
     val all = scala.collection.mutable.Map[String, ServerProxy]()
@@ -61,7 +59,7 @@ class ReverseProxy @Inject () (
       if (all.isDefinedAt(s.name)) {
         sys.error(s"Duplicate server with name[${s.name}]")
       } else {
-        all += (s.name -> serverProxyFactory(ServerProxyDefinition(s, multiService)))
+        all += (s.name -> serverProxyFactory(ServerProxyDefinition(s)))
       }
     }
     all.toMap
@@ -306,13 +304,15 @@ class ReverseProxy @Inject () (
     val hostOverride: Option[String] = request.headers.get(Constants.Headers.FlowHost)
 
     if (serverNameOverride.isEmpty && hostOverride.isEmpty) {
-      Future {
+      Future.successful(
         index.resolve(request.method, path) match {
           case None => {
-            multiService.validate(request.method, path) match {
+            apiBuilderServicesFetcher.multiService.validate(request.method, path) match {
               case Left(errors) => {
-                Logger.info(s"Unrecognized method ${request.method} for $path - available methods: ${errors.mkString(", ")}")
-                Left(request.response(422, genericErrors(errors).toString))
+                Logger.info(s"[proxy $request] status:422 apibuilder validation error: $errors")
+                Left(
+                  request.responseUnprocessableEntity(errors.mkString(", "))
+                )
               }
               case Right(_) => {
                 Logger.info(s"Unrecognized URL ${request.method} $path - returning 404")
@@ -325,7 +325,7 @@ class ReverseProxy @Inject () (
             Right(operation)
           }
         }
-      }
+      )
     } else {
       token.userId match {
         case None => Future.successful(
@@ -357,7 +357,9 @@ class ReverseProxy @Inject () (
                     )
                   } else {
                     Left(
-                      request.response(422, s"Value for ${Constants.Headers.FlowHost} header must start with http:// or https://")
+                      request.responseUnprocessableEntity(
+                        s"Value for header '${Constants.Headers.FlowHost}' must start with http:// or https://"
+                      )
                     )
                   }
                 }
@@ -369,7 +371,9 @@ class ReverseProxy @Inject () (
                   findServerByName(name) match {
                     case None => {
                       Left(
-                        request.response(422, s"Invalid server name from Request Header[${Constants.Headers.FlowServer}]")
+                        request.responseUnprocessableEntity(
+                          s"Invalid server name from Request Header '${Constants.Headers.FlowServer}'"
+                        )
                       )
                     }
 

@@ -3,6 +3,7 @@ package handlers
 import javax.inject.{Inject, Singleton}
 
 import controllers.ServerProxyDefinition
+import io.apibuilder.validation.MultiService
 import lib._
 import play.api.http.HttpEntity
 import play.api.libs.ws.{WSClient, WSRequest, WSResponse}
@@ -14,8 +15,11 @@ import scala.concurrent.{ExecutionContext, Future}
 class GenericHandler @Inject() (
   override val config: Config,
   override val flowAuth: FlowAuth,
-  override val wsClient: WSClient
+  override val wsClient: WSClient,
+  apiBuilderServicesFetcher: ApiBuilderServicesFetcher
 ) extends Handler with HandlerUtilities  {
+
+  override def multiService: MultiService = apiBuilderServicesFetcher.multiService
 
   override def process(
     definition: ServerProxyDefinition,
@@ -53,7 +57,9 @@ class GenericHandler @Inject() (
           case "PUT" => processResponse(request, wsRequest.put(file))
           case "PATCH" => processResponse(request, wsRequest.patch(file))
           case _ => Future.successful(
-            request.responseUnprocessableEntity(s"Invalid method for body with file. Must be POST, PUT, or PATCH and not '${request.method}'")
+            request.responseUnprocessableEntity(
+              s"Invalid method '${request.method}' for body with file. Must be POST, PUT, or PATCH"
+            )
           )
         }
       }
@@ -111,29 +117,29 @@ class GenericHandler @Inject() (
     }
   }
 
+  /**
+    * Removes any existing Content-Type headers from the map, adding
+    * a header with single new value to the specified contentType
+    */
   private[this] def setContentTypeHeader(
     wsRequest: WSRequest,
     contentType: ContentType
   ): WSRequest = {
     val headers = Seq(
-      addContentType(wsRequest.headers, contentType).flatMap { case (key, values) =>
-        values.map { v =>
-          (key, v)
+      wsRequest.headers.flatMap { case (key, values) =>
+        if (key.toLowerCase == "content-type") {
+          Seq(
+            ("Content-Type", contentType.toString)
+          )
+        } else {
+          values.map { v =>
+            (key, v)
+          }
         }
       }.toSeq
     ).flatten
 
     wsRequest.withHttpHeaders(headers: _*)
-  }
-
-  private[this] def addContentType(
-    headers: Map[String, Seq[String]],
-    contentType: ContentType
-  ): Map[String, Seq[String]] = {
-    val name = "Content-Type"
-    headers.filter(_._1.toLowerCase != name.toLowerCase) ++ Map(
-      "Content-Type" -> Seq(contentType.toString)
-    )
   }
 
 }

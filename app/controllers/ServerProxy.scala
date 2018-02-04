@@ -1,35 +1,25 @@
 package controllers
 
 import akka.actor.ActorSystem
-import akka.stream.scaladsl.Source
-import akka.util.ByteString
 import com.google.inject.AbstractModule
 import com.google.inject.assistedinject.{Assisted, FactoryModuleBuilder}
 import io.apibuilder.validation.FormData
 import java.net.URI
 import javax.inject.Inject
 
-import actors.MetricActor
 import akka.stream.ActorMaterializer
-import io.apibuilder.spec.v0.models.ParameterLocation
 import play.api.Logger
-import play.api.libs.ws.WSClient
 import play.api.mvc._
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
-import play.api.http.HttpEntity
 import lib._
-import play.api.libs.json.{JsObject, JsValue, Json}
 
 import scala.annotation.tailrec
-import scala.concurrent.duration.{FiniteDuration, MILLISECONDS, SECONDS}
-import akka.stream.scaladsl.StreamConverters
-import handlers.UrlFormEncodedHandler
+import scala.concurrent.duration.{FiniteDuration, SECONDS}
 
 case class ServerProxyDefinition(
-  server: Server,
-  multiService: io.apibuilder.validation.MultiService // TODO Move higher level
+  server: Server
 ) {
 
   val requestTimeout: FiniteDuration = server.name match {
@@ -40,7 +30,7 @@ case class ServerProxyDefinition(
   }
 
   val hostHeaderValue: String = Option(new URI(server.host).getHost).getOrElse {
-    sys.error(s"Could not parse host from server[$server]")
+    sys.error(s"Could not parse host from server[${server.name}] host[${server.host}]")
   }
 
 }

@@ -40,28 +40,18 @@ class GenericHandlerSpec extends BasePlaySpec {
     )
   }
 
-  def toString(body: Source[ByteString, _]): String = {
-    implicit val system: ActorSystem = app.injector.instanceOf[ActorSystem]
+  private[this] def toString(source: Source[ByteString, _]): String = {
+    implicit val system: ActorSystem = ActorSystem("QuickStart")
     implicit val materializer: ActorMaterializer = ActorMaterializer()
-
-    println(s"toString - 1")
-    val is = body.runWith(StreamConverters.asInputStream(FiniteDuration(100, MILLISECONDS)))
-    println(s"toString - 2")
-    val r = scala.io.Source.fromInputStream(is, "UTF-8").mkString
-    println(s"toString - 3")
-    r
+    val is = source.runWith(StreamConverters.asInputStream(FiniteDuration(100, MILLISECONDS)))
+    scala.io.Source.fromInputStream(is, "UTF-8").mkString
   }
 
   "GET request" in {
-    MockStandaloneServer.withServer { (server, wsClient) =>
-      /*
-      println(s"server: $server")
-      val url = s"${server.host}/users/"
-      println(s"URL - $url")
-      val u = await(wsClient.url(url).get()).body
-      println(s"USER: $u")
+    MockStandaloneServer.withServer { (server, client) =>
       val response = await(
         genericHandler.process(
+          wsClient = client,
           server = server,
           request = createProxyRequest(
             requestMethod = Method.Get,
@@ -71,10 +61,8 @@ class GenericHandlerSpec extends BasePlaySpec {
           token = ResolvedToken(requestId = createTestId())
         )
       )
-      wsClient.underlying
-      println(s"response: ${response.body}")
-      println(s"BODY: " + toString(response.body.dataStream))
-*/
+      response.header.status must equal(200)
+      toString(response.body.dataStream) must equal("[{\"id\":1,\"name\":\"Joe Smith\"}]")
     }
   }
 

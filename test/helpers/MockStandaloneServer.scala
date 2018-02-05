@@ -44,13 +44,8 @@ object MockStandaloneServer {
       }
     } { implicit port =>
       WsTestClient.withClient { client =>
-        println(s"CREATED SERVER ON PORT[${port.value}]")
-        val r = f(port, client)
-        Thread.sleep(1000)
-        println(s"CLOSED SERVER ON PORT[${port.value}]")
-        r
+        f(port, client)
       }
     }
   }
-
 }

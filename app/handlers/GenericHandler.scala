@@ -140,6 +140,17 @@ class GenericHandler @Inject() (
           flatMap(_.headOption).
           getOrElse(request.contentType.toString)
 
+        // we specify content type and length explicitly - do not include
+        // in response headers below as they will be et twice generating
+        // warnings in async http client
+        val responseHeaders = Util.toFlatSeq(
+          Util.removeKeys(
+            response.headers,
+            Seq(Constants.Headers.ContentType, Constants.Headers.ContentLength
+            )
+          )
+        )
+
         // If there's a content length, send that, otherwise return the body chunked
         response.headers.get("Content-Length") match {
           case Some(Seq(length)) =>
@@ -147,13 +158,13 @@ class GenericHandler @Inject() (
               sendEntity(
                 HttpEntity.Streamed(response.bodyAsSource, Some(length.toLong), Some(contentType))
               ).
-              withHeaders(Util.toFlatSeq(response.headers): _*)
+              withHeaders(responseHeaders: _*)
 
           case _ =>
             Results.Status(response.status).
-              chunked(response.bodyAsSource).as(contentType).
-              withHeaders(Util.toFlatSeq(response.headers): _*)
-
+              chunked(response.bodyAsSource).
+              as(contentType).
+              withHeaders(responseHeaders: _*)
         }
       }
     }.recover {

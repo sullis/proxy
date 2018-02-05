@@ -18,6 +18,17 @@ class UtilSpec extends PlaySpec with OneServerPerSuite {
     parts.contains(("foo2", "baz")) must be(true)
   }
 
+  "removeKeys" in {
+    val parts = Util.removeKeys(
+      Map[String, Seq[String]](
+        "foo" -> Seq("bar"),
+        "foo2" -> Seq("baz")
+      ),
+      Seq("a", "foo2")
+    )
+    parts.keys.toSeq must equal(Seq("foo"))
+  }
+
   "query with multiple values" in {
     val parts = Util.toFlatSeq(
       Map[String, Seq[String]](

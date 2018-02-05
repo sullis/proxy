@@ -120,7 +120,7 @@ response = helpers.json_post("/organizations/0?envelope=request", { }).with_api_
 assert_generic_error(response, "Error in envelope request body: Field 'method' is required")
 
 response = helpers.json_post("/organizations/0?envelope=request", { :method => 123, :body => "test" }).with_api_key.execute
-assert_generic_error(response, "Error in envelope request body: Field 'method' must be one of GET, POST, PUT, PATCH, DELETE")
+assert_generic_error(response, "Error in envelope request body: Field 'method' must be one of GET, POST, PUT, PATCH, DELETE, HEAD, CONNECT, OPTIONS, TRACE")
 
 new_name = org['name'] + " 2"
 response = helpers.json_post("/organizations/#{id}?envelope=request", { :method => "PUT", :body => { :name => new_name } }).with_api_key.execute

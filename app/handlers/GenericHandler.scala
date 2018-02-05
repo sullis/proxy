@@ -146,7 +146,7 @@ class GenericHandler @Inject() (
         val responseHeaders = Util.toFlatSeq(
           Util.removeKeys(
             response.headers,
-            Seq(Constants.Headers.ContentType, Constants.Headers.ContentLength
+            Seq(Constants.Headers.ContentLength
             )
           )
         )
@@ -163,8 +163,8 @@ class GenericHandler @Inject() (
           case _ =>
             Results.Status(response.status).
               chunked(response.bodyAsSource).
-              as(contentType).
               withHeaders(responseHeaders: _*)
+
         }
       }
     }.recover {

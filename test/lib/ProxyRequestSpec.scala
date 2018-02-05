@@ -1,17 +1,10 @@
 package lib
 
 import akka.util.ByteString
-import org.scalatestplus.play._
+import helpers.BasePlaySpec
 import play.api.mvc.Headers
 
-class ProxyRequestSpec extends PlaySpec with OneServerPerSuite {
-
-  def rightOrErrors[T](result: Either[Seq[String], T]): T = {
-    result match {
-      case Left(errors) => sys.error("Unexpected error: " + errors.mkString(", "))
-      case Right(obj) => obj
-    }
-  }
+class ProxyRequestSpec extends BasePlaySpec {
 
   private[this] val testBody = Some(ProxyRequestBody.Bytes(ByteString("test".getBytes())))
 
@@ -53,7 +46,7 @@ class ProxyRequestSpec extends PlaySpec with OneServerPerSuite {
     request.headers.getAll("foo") must be(Seq("1", "2"))
     request.headers.getAll("foo2") must be(Nil)
     request.originalMethod must be("get")
-    request.method must be("GET")
+    request.method must be(Method.Get)
     request.pathWithQuery must be("/users/?foo=1&foo=2")
     request.path must be("/users/")
     request.bodyUtf8 must be(Some("test"))
@@ -77,7 +70,7 @@ class ProxyRequestSpec extends PlaySpec with OneServerPerSuite {
           queryParameters = Map("method" -> Seq("post")),
           headers = Headers()
         )
-      ).method must be("POST")
+      ).method must be(Method.Post)
     }
 
     "reject invalid" in {
@@ -88,7 +81,9 @@ class ProxyRequestSpec extends PlaySpec with OneServerPerSuite {
         queryParameters = Map("method" -> Seq("foo")),
         headers = Headers()
       ) must be(Left(
-        Seq("Invalid value 'foo' for query parameter 'method' - must be one of GET, POST, PUT, PATCH, DELETE")
+        Seq(
+          "Invalid value 'foo' for query parameter 'method' - must be one of GET, POST, PUT, PATCH, DELETE, HEAD, CONNECT, OPTIONS, TRACE"
+        )
       ))
     }
 

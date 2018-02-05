@@ -16,7 +16,7 @@ import scala.concurrent.{ExecutionContext, Future}
 class GenericHandler @Inject() (
   override val config: Config,
   flowAuth: FlowAuth,
-  wsClient: WSClient,
+  defaultWsClient: WSClient,
   apiBuilderServicesFetcher: ApiBuilderServicesFetcher
 ) extends Handler with HandlerUtilities  {
 
@@ -30,7 +30,19 @@ class GenericHandler @Inject() (
   )(
     implicit ec: ExecutionContext
   ): Future[Result] = {
-    val wsRequest = buildRequest(server, request, route, token)
+    process(defaultWsClient, server, request, route, token)
+  }
+
+  private[handlers] def process(
+    wsClient: WSClient,
+    server: Server,
+    request: ProxyRequest,
+    route: Route,
+    token: ResolvedToken
+  )(
+    implicit ec: ExecutionContext
+  ): Future[Result] = {
+    val wsRequest = buildRequest(wsClient, server, request, route, token)
 
     request.body match {
       case None => {
@@ -38,10 +50,10 @@ class GenericHandler @Inject() (
       }
 
       case Some(ProxyRequestBody.File(file)) => {
-        request.method.toUpperCase match {
-          case "POST" => processResponse(request, wsRequest.post(file))
-          case "PUT" => processResponse(request, wsRequest.put(file))
-          case "PATCH" => processResponse(request, wsRequest.patch(file))
+        request.method match {
+          case Method.Post => processResponse(request, wsRequest.post(file))
+          case Method.Put => processResponse(request, wsRequest.put(file))
+          case Method.Patch => processResponse(request, wsRequest.patch(file))
           case _ => Future.successful(
             request.responseUnprocessableEntity(
               s"Invalid method '${request.method}' for body with file. Must be POST, PUT, or PATCH"
@@ -69,6 +81,7 @@ class GenericHandler @Inject() (
   }
 
   private[this] def buildRequest(
+    wsClient: WSClient,
     server: Server,
     request: ProxyRequest,
     route: Route,
@@ -77,7 +90,7 @@ class GenericHandler @Inject() (
     println(s"URL: ${server.host + request.path}")
     wsClient.url(server.host + request.path)
       .withFollowRedirects(false)
-      .withMethod(route.method)
+      .withMethod(route.method.toString)
       .withRequestTimeout(server.requestTimeout)
       .addQueryStringParameters(
         definedQueryParameters(request, route): _*
@@ -108,6 +121,7 @@ class GenericHandler @Inject() (
           flatMap(_.headOption).
           getOrElse(request.contentType.toString)
 
+        println(s"contentType: $contentType")
         // If there's a content length, send that, otherwise return the body chunked
         response.headers.get("Content-Length") match {
           case Some(Seq(length)) =>
@@ -192,7 +206,7 @@ class GenericHandler @Inject() (
   ): Seq[(String, String)] = {
     val allQueryParameters = request.queryParametersAsSeq()
     if (request.requestEnvelope) {
-      multiService.operation(route.method, route.path) match {
+      multiService.operation(route.method.toString, route.path) match {
         case None => {
           allQueryParameters
         }

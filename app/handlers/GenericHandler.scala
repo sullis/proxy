@@ -16,7 +16,7 @@ import scala.concurrent.{ExecutionContext, Future}
 class GenericHandler @Inject() (
   override val config: Config,
   flowAuth: FlowAuth,
-  defaultWsClient: WSClient,
+  wsClient: WSClient,
   apiBuilderServicesFetcher: ApiBuilderServicesFetcher
 ) extends Handler with HandlerUtilities  {
 
@@ -30,19 +30,7 @@ class GenericHandler @Inject() (
   )(
     implicit ec: ExecutionContext
   ): Future[Result] = {
-    process(defaultWsClient, server, request, route, token)
-  }
-
-  private[handlers] def process(
-    wsClient: WSClient,
-    server: Server,
-    request: ProxyRequest,
-    route: Route,
-    token: ResolvedToken
-  )(
-    implicit ec: ExecutionContext
-  ): Future[Result] = {
-    val wsRequest = buildRequest(wsClient, server, request, route, token)
+    val wsRequest = buildRequest(server, request, route, token)
 
     request.body match {
       case None => {
@@ -63,7 +51,10 @@ class GenericHandler @Inject() (
       }
 
       case Some(ProxyRequestBody.Bytes(bytes)) => {
-        processResponse(request, wsRequest.withBody(bytes).stream())
+        processResponse(
+          request,
+          wsRequest.withBody(bytes).stream()
+        )
       }
 
       case Some(ProxyRequestBody.Json(json)) => {
@@ -71,9 +62,7 @@ class GenericHandler @Inject() (
 
         processResponse(
           request,
-          setContentTypeHeader(wsRequest, ContentType.ApplicationJson)
-            .withBody(json)
-            .stream
+          wsRequest.withBody(json).stream
         )
       }
     }
@@ -81,7 +70,6 @@ class GenericHandler @Inject() (
   }
 
   private[this] def buildRequest(
-    wsClient: WSClient,
     server: Server,
     request: ProxyRequest,
     route: Route,
@@ -135,31 +123,6 @@ class GenericHandler @Inject() (
     }.recover {
       case ex: Throwable => throw new Exception(ex)
     }
-  }
-
-  /**
-    * Removes any existing Content-Type headers from the map, adding
-    * a header with single new value to the specified contentType
-    */
-  private[this] def setContentTypeHeader(
-    wsRequest: WSRequest,
-    contentType: ContentType
-  ): WSRequest = {
-    val headers = Seq(
-      wsRequest.headers.flatMap { case (key, values) =>
-        if (key.toLowerCase == "content-type") {
-          Seq(
-            ("Content-Type", contentType.toString)
-          )
-        } else {
-          values.map { v =>
-            (key, v)
-          }
-        }
-      }.toSeq
-    ).flatten
-
-    wsRequest.withHttpHeaders(headers: _*)
   }
 
   /**

@@ -116,61 +116,70 @@ class GenericHandler @Inject() (
     implicit ec: ExecutionContext
   ): Future[Result] = {
     response.map { response =>
-      metricActor ! MetricActor.Messages.Send(
-        server = server.name,
-        requestId = request.requestId,
-        method = request.method.toString,
-        path = request.pathWithQuery,
-        ms = System.currentTimeMillis() - request.createdAtMillis,
-        response = response.status,
-        organizationId = token.organizationId,
-        partnerId = token.partnerId,
-        userId = token.userId
+      metricActor ! toMetricMessage(server, request, response.status, token)
+
+      /**
+        * Returns the content type of the response, defaulting to the
+        * request Content-Type
+        */
+      val contentType: String = response.header(Constants.Headers.ContentType).getOrElse(
+        request.contentType.toString
+      )
+      val contentLength: Option[String] = response.header("Content-Length")
+
+      // Remove content type (to avoid adding twice) then add common Flow headers
+      val responseHeaders = Util.removeKey(
+        response.headers,
+        Constants.Headers.ContentType
+      ) ++ Map(
+        Constants.Headers.ContentType -> Seq(contentType),
+        Constants.Headers.FlowRequestId -> Seq(request.requestId),
+        Constants.Headers.FlowServer -> Seq(server.name)
       )
 
       if (request.responseEnvelope) {
-        request.response(response.status, response.body, response.headers)
+        request.response(response.status, response.body, responseHeaders)
       } else {
-        /**
-          * Returns the content type of the response, defaulting to the
-          * request Content-Type
-          */
-        val contentType: String = response.headers.
-          get("Content-Type").
-          flatMap(_.headOption).
-          getOrElse(request.contentType.toString)
+        contentLength match {
+          case None => {
+            Results.Status(response.status).
+              chunked(response.bodyAsSource).
+              withHeaders(Util.toFlatSeq(responseHeaders): _*)
+          }
 
-        // we specify content type and length explicitly - do not include
-        // in response headers below as they will be et twice generating
-        // warnings in async http client
-        val responseHeaders = Util.toFlatSeq(
-          Util.removeKeys(
-            response.headers,
-            Seq(Constants.Headers.ContentLength
-            )
-          )
-        )
-
-        // If there's a content length, send that, otherwise return the body chunked
-        response.headers.get("Content-Length") match {
-          case Some(Seq(length)) =>
+          case Some(length) => {
             Results.Status(response.status).
               sendEntity(
                 HttpEntity.Streamed(response.bodyAsSource, Some(length.toLong), Some(contentType))
               ).
-              withHeaders(responseHeaders: _*)
-
-          case _ =>
-            Results.Status(response.status).
-              chunked(response.bodyAsSource).
-              withHeaders(responseHeaders: _*)
-
+              withHeaders(Util.toFlatSeq(responseHeaders): _*)
+          }
         }
       }
     }.recover {
       case ex: Throwable => throw new Exception(ex)
     }
   }
+
+  private[this] def toMetricMessage(
+    server: Server,
+    request: ProxyRequest,
+    responseStatus: Int,
+    token: ResolvedToken
+  ): MetricActor.Messages.Send = {
+    MetricActor.Messages.Send(
+      server = server.name,
+      requestId = request.requestId,
+      method = request.method.toString,
+      path = request.pathWithQuery,
+      ms = System.currentTimeMillis() - request.createdAtMillis,
+      response = responseStatus,
+      organizationId = token.organizationId,
+      partnerId = token.partnerId,
+      userId = token.userId
+    )
+  }
+
 
   /**
     * Modifies headers by:

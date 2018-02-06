@@ -27,7 +27,7 @@ class ServerProxySpec extends BasePlaySpec {
         "foo2" -> Seq("c")
       )
     )
-    println(s"parts: $parts")
+
     parts.contains(("foo[0]", "a")) must be(true)
     parts.contains(("foo[1]", "b")) must be(true)
     parts.contains(("foo2", "c")) must be(true)

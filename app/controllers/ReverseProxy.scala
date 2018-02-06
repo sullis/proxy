@@ -302,7 +302,6 @@ class ReverseProxy @Inject () (
     val path = request.path
     val serverNameOverride: Option[String] = request.headers.get(Constants.Headers.FlowServer)
     val hostOverride: Option[String] = request.headers.get(Constants.Headers.FlowHost)
-    println(s"serverNameOverride[$serverNameOverride] hostOverride[$hostOverride]")
 
     if (serverNameOverride.isEmpty && hostOverride.isEmpty) {
       Future.successful(

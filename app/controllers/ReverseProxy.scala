@@ -309,7 +309,7 @@ class ReverseProxy @Inject () (
           case None => {
             apiBuilderServicesFetcher.multiService.validate(request.method.toString, path) match {
               case Left(errors) => {
-                Logger.info(s"[proxy $request] status:422 apibuilder validation error: $errors")
+                Logger.info(s"[proxy $request] status:422 apibuilder validation error: ${errors.mkString(", ")}")
                 Left(
                   request.responseUnprocessableEntity(errors.mkString(", "))
                 )

@@ -239,7 +239,7 @@ class ProxyConfigFetcher @Inject() (
   private[this] def refresh(): Option[Index] = {
     load(Uris) match {
       case Left(errors) => {
-        Logger.error(s"Failed to load proxy configuration from Uris[$Uris]: $errors")
+        Logger.error(s"Failed to load proxy configuration from Uris[$Uris]: ${errors.mkString(", ")}")
         None
       }
       case Right(cfg) => {

@@ -88,70 +88,56 @@ operations:
   "latest production config" in {
     val uri = "https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/production.config"
     val contents = Source.fromURL(uri).mkString
-    ConfigParser.parse(uri, contents).validate() match {
-      case Left(errors) => {
-        sys.error(s"Failed to parse config at URI[$uri]: $errors")
+    val config = rightOrErrors(ConfigParser.parse(uri, contents).validate())
+    Seq("user", "organization", "catalog").foreach { name =>
+      val server = config.servers.find(_.name == name).getOrElse {
+        sys.error(s"Failed to find server[$name]")
       }
+      server.host must be(s"https://$name.api.flow.io")
+    }
 
-      case Right(config) => {
-        Seq("user", "organization", "catalog").foreach { name =>
-          val server = config.servers.find(_.name == name).getOrElse {
-            sys.error(s"Failed to find server[$name]")
-          }
-          server.host must be(s"https://$name.api.flow.io")
-        }
-
-        val index = Index(config)
-        Seq(
-          (Method.Get, "/users", "user"),
-          (Method.Get, "/organizations", "organization"),
-          (Method.Get, "/:organization/catalog", "catalog")
-        ).foreach { case (method, path, server) =>
-          val op = index.resolve(method, path).getOrElse {
-            sys.error(s"Failed to resolve path[$path]")
-          }
-          op.server.name must be(server)
-          op.route.method must be(method)
-          op.route.path must be(path)
-        }
+    val index = Index(config)
+    Seq(
+      (Method.Get, "/users", "user"),
+      (Method.Get, "/organizations", "organization"),
+      (Method.Get, "/:organization/catalog", "catalog")
+    ).foreach { case (method, path, server) =>
+      val op = index.resolve(method, path).getOrElse {
+        sys.error(s"Failed to resolve path[$path]")
       }
+      op.server.name must be(server)
+      op.route.method must be(method)
+      op.route.path must be(path)
     }
   }
 
   "latest development config" in {
     val uri = "https://s3.amazonaws.com/io.flow.aws-s3-public/util/api-proxy/development.config"
     val contents = Source.fromURL(uri).mkString
-    ConfigParser.parse(uri, contents).validate() match {
-      case Left(errors) => {
-        sys.error(s"Failed to parse config at URI[$uri]: $errors")
+    val config = rightOrErrors(ConfigParser.parse(uri, contents).validate())
+    Map(
+      "user" -> "http://localhost:6021",
+      "organization" -> "http://localhost:6081",
+      "catalog" -> "http://localhost:6071"
+    ).foreach { case (name, host) =>
+      val server = config.servers.find(_.name == name).getOrElse {
+        sys.error(s"Failed to find server[$name]")
       }
+      server.host must be(host)
+    }
 
-      case Right(config) => {
-        Map(
-          "user" -> "http://localhost:6021",
-          "organization" -> "http://localhost:6081",
-          "catalog" -> "http://localhost:6071"
-        ).foreach { case (name, host) =>
-          val server = config.servers.find(_.name == name).getOrElse {
-            sys.error(s"Failed to find server[$name]")
-          }
-          server.host must be(host)
-        }
-
-        val index = Index(config)
-        Seq(
-          (Method.Get, "/users", "user"),
-          (Method.Get, "/organizations", "organization"),
-          (Method.Get, "/:organization/catalog", "catalog")
-        ).foreach { case (method, path, server) =>
-          val op = index.resolve(method, path).getOrElse {
-            sys.error(s"Failed to resolve path[$path]")
-          }
-          op.server.name must be(server)
-          op.route.method must be(method)
-          op.route.path must be(path)
-        }
+    val index = Index(config)
+    Seq(
+      (Method.Get, "/users", "user"),
+      (Method.Get, "/organizations", "organization"),
+      (Method.Get, "/:organization/catalog", "catalog")
+    ).foreach { case (method, path, server) =>
+      val op = index.resolve(method, path).getOrElse {
+        sys.error(s"Failed to resolve path[$path]")
       }
+      op.server.name must be(server)
+      op.route.method must be(method)
+      op.route.path must be(path)
     }
   }
 

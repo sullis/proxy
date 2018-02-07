@@ -36,7 +36,7 @@ class ApiBuilderServicesFetcher @Inject() (
   }
 
   lazy val multiService: MultiService = load(Uris) match {
-    case Left(errors) => sys.error(s"Error loading API Builder services from uris[$Uris]: $errors")
+    case Left(errors) => sys.error(s"Error loading API Builder services from uris[$Uris]: ${errors.mkString(", ")}")
     case Right(multi) => multi
   }
 

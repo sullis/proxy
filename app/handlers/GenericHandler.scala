@@ -144,7 +144,6 @@ class GenericHandler @Inject() (
         Constants.Headers.FlowServer -> Seq(server.name)
       )
 
-      println(s"request.responseEnvelope: ${request.responseEnvelope}")
       if (request.responseEnvelope) {
         request.response(response.status, response.body, contentType, responseHeaders)
       } else {

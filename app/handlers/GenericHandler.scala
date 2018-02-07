@@ -48,7 +48,9 @@ class GenericHandler @Inject() (
   ): Future[Result] = {
     val msg = request.body match {
       case Some(ProxyRequestBody.Json(json)) => {
-        Some(s"body:${safeBody(request, json)}")
+        safeBody(request, json).map { safe =>
+          s"body:$safe"
+        }
       }
       case _ => None
     }

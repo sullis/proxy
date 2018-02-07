@@ -124,7 +124,7 @@ class GenericHandler @Inject() (
     response.map { response =>
       val duration = System.currentTimeMillis() - request.createdAtMillis
       metricActor ! toMetricMessage(server, request, response.status, token, duration)
-      log(request, server, "done", Some(s"timeToFirstByteMs:$duration status:${response.status}"))
+      log(request, server, "done", Some(s"status:${response.status} timeToFirstByteMs:$duration"))
 
       /**
         * Returns the content type of the response, defaulting to the

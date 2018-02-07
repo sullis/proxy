@@ -5,7 +5,7 @@ RUN sbt clean stage
 
 FROM flowdocker/play:0.0.85
 COPY --from=builder /opt/play /opt/play
-WORKDIR /opt/play/api/target/universal/stage
+WORKDIR /opt/play/target/universal/stage
 ENTRYPOINT ["java", "-jar", "/root/environment-provider.jar", "--service", "play", "proxy", "bin/proxy"]
 HEALTHCHECK --interval=5s --timeout=5s --retries=10 \
   CMD curl -f http://localhost:9000/_internal_/healthcheck || exit 1

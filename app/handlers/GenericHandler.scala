@@ -9,6 +9,7 @@ import io.apibuilder.validation.MultiService
 import lib._
 import play.api.Logger
 import play.api.http.HttpEntity
+import play.api.libs.json.{JsObject, JsValue}
 import play.api.libs.ws.{WSClient, WSRequest, WSResponse}
 import play.api.mvc.{Headers, Result, Results}
 
@@ -21,7 +22,7 @@ class GenericHandler @Inject() (
   flowAuth: FlowAuth,
   wsClient: WSClient,
   apiBuilderServicesFetcher: ApiBuilderServicesFetcher
-) extends Handler with HandlerUtilities  {
+) extends Handler with HandlerUtilities {
 
   override def multiService: MultiService = apiBuilderServicesFetcher.multiService
 
@@ -45,6 +46,13 @@ class GenericHandler @Inject() (
   )(
     implicit ec: ExecutionContext
   ): Future[Result] = {
+    val msg = request.body match {
+      case Some(ProxyRequestBody.Json(json)) => {
+        Some(s"body:${safeBody(request, json)}")
+      }
+      case _ => None
+    }
+    log(request, server, "start", msg)
 
     val wsRequest = buildRequest(wsClient, server, request, route, token)
 
@@ -76,9 +84,7 @@ class GenericHandler @Inject() (
       }
 
       case Some(ProxyRequestBody.Json(json)) => {
-        logFormData(request, json)
-
-        processResponse(server, 
+        processResponse(server,
           request,
           token,
           wsRequest.withBody(json).stream
@@ -116,41 +122,44 @@ class GenericHandler @Inject() (
     implicit ec: ExecutionContext
   ): Future[Result] = {
     response.map { response =>
-      metricActor ! toMetricMessage(server, request, response.status, token)
+      val duration = System.currentTimeMillis() - request.createdAtMillis
+      metricActor ! toMetricMessage(server, request, response.status, token, duration)
+      log(request, server, "done", Some(s"timeToFirstByteMs:$duration status:${response.status}"))
 
       /**
         * Returns the content type of the response, defaulting to the
         * request Content-Type
         */
-      val contentType: String = response.header(Constants.Headers.ContentType).getOrElse(
-        request.contentType.toString
+      val contentType: ContentType = response.header(Constants.Headers.ContentType).map(ContentType.apply).getOrElse(
+        request.contentType
       )
       val contentLength: Option[String] = response.header("Content-Length")
 
-      // Remove content type (to avoid adding twice) then add common Flow headers
-      val responseHeaders = Util.removeKey(
+      // Remove content type (to avoid adding twice below) then add common Flow headers
+      val responseHeaders = Util.removeKeys(
         response.headers,
-        Constants.Headers.ContentType
+        Seq(Constants.Headers.ContentType, Constants.Headers.ContentLength)
       ) ++ Map(
-        Constants.Headers.ContentType -> Seq(contentType),
         Constants.Headers.FlowRequestId -> Seq(request.requestId),
         Constants.Headers.FlowServer -> Seq(server.name)
       )
 
+      println(s"request.responseEnvelope: ${request.responseEnvelope}")
       if (request.responseEnvelope) {
-        request.response(response.status, response.body, responseHeaders)
+        request.response(response.status, response.body, contentType, responseHeaders)
       } else {
         contentLength match {
           case None => {
             Results.Status(response.status).
               chunked(response.bodyAsSource).
-              withHeaders(Util.toFlatSeq(responseHeaders): _*)
+              withHeaders(Util.toFlatSeq(responseHeaders): _*).
+              as(contentType.toStringWithEncoding)
           }
 
           case Some(length) => {
             Results.Status(response.status).
               sendEntity(
-                HttpEntity.Streamed(response.bodyAsSource, Some(length.toLong), Some(contentType))
+                HttpEntity.Streamed(response.bodyAsSource, Some(length.toLong), Some(contentType.toStringWithEncoding))
               ).
               withHeaders(Util.toFlatSeq(responseHeaders): _*)
           }
@@ -165,14 +174,15 @@ class GenericHandler @Inject() (
     server: Server,
     request: ProxyRequest,
     responseStatus: Int,
-    token: ResolvedToken
+    token: ResolvedToken,
+    duration: Long
   ): MetricActor.Messages.Send = {
     MetricActor.Messages.Send(
       server = server.name,
       requestId = request.requestId,
       method = request.method.toString,
       path = request.pathWithQuery,
-      ms = System.currentTimeMillis() - request.createdAtMillis,
+      ms = duration,
       response = responseStatus,
       organizationId = token.organizationId,
       partnerId = token.partnerId,
@@ -246,6 +256,37 @@ class GenericHandler @Inject() (
       }
     } else {
       allQueryParameters
+    }
+  }
+
+  private[this] def log(
+    request: ProxyRequest,
+    server: Server,
+    stage: String,
+    message: Option[String] = None
+  ): Unit = {
+    val m = message match {
+      case None => ""
+      case Some(msg) => s" $msg"
+    }
+    Logger.info(s"[proxy $request] $stage server:${server.name} ${request.method} ${server.host}${request.pathWithQuery}$m")
+  }
+
+  private[this] def safeBody(
+    request: ProxyRequest,
+    body: JsValue
+  ): Option[String] = {
+    if (request.method != Method.Get) {
+      val typ = multiService.bodyTypeFromPath(request.method.toString, request.path)
+      Some(
+        body match {
+          case j: JsObject if typ.isEmpty && j.value.isEmpty => "{}"
+          case _: JsObject => toLogValue(request, body, typ).toString
+          case _ => "Body of type[${body.getClass.getName}] fully redacted"
+        }
+      )
+    } else {
+      None
     }
   }
 }

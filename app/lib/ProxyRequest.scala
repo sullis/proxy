@@ -244,30 +244,45 @@ case class ProxyRequest(
   }
 
   /**
-    * Returns a valid play result, taking into account any requests for response envelopes
-    */
+  * Returns a valid play result, taking into account any requests for response envelopes
+  */
   def response(
     status: Int,
     body: String,
+    contentType: ContentType,
     headers: Map[String,Seq[String]] = Map()
   ): Result = {
     if (responseEnvelope) {
-      val wrappedBody = wrappedResponseBody(status, body, headers)
-
-      // Adjust content length as we added to the body.
-      // Explicitly set content-type to javascript
-      val responseHeaders = Util.removeKeys(
-        headers,
-        Seq(Constants.Headers.ContentLength, Constants.Headers.ContentType)
-        ) ++ Map(
-        Constants.Headers.ContentLength -> Seq(wrappedBody.length.toString),
-        Constants.Headers.ContentType -> Seq("application/javascript; charset=utf-8")
+      internalResponse(
+        200,
+        wrappedResponseBody(status, body, headers),
+        contentType = ContentType.ApplicationJavascript,
+        headers
       )
-
-      Ok(wrappedBody).withHeaders(Util.toFlatSeq(responseHeaders): _*)
     } else {
-      Status(status)(body).withHeaders(Util.toFlatSeq(headers): _*)
+      internalResponse(
+        status,
+        body,
+        contentType,
+          headers
+      )
     }
+  }
+
+  private[this] def internalResponse(
+    status: Int,
+    body: String,
+    contentType: ContentType,
+    headers: Map[String,Seq[String]] = Map()
+  ): Result = {
+    val responseHeaders = Util.removeKeys(
+      headers,
+      Seq(Constants.Headers.ContentLength, Constants.Headers.ContentType)
+    )
+
+    Status(status)(body).
+      withHeaders(Util.toFlatSeq(responseHeaders): _*).
+      as(contentType.toStringWithEncoding)
   }
 
   def responseUnauthorized(
@@ -294,6 +309,7 @@ case class ProxyRequest(
     response(
       status = status,
       body = genericError(message).toString,
+      ContentType.ApplicationJson,
       headers = headers
     )
   }

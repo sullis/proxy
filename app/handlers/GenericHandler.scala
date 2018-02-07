@@ -146,7 +146,7 @@ class GenericHandler @Inject() (
         Constants.Headers.FlowServer -> Seq(server.name)
       )
 
-      if (request.responseEnvelope) {
+      if (request.responseEnvelope || response.status == 422) {
         request.response(response.status, response.body, contentType, responseHeaders)
       } else {
         contentLength match {
@@ -283,7 +283,7 @@ class GenericHandler @Inject() (
 
       case 422 => {
         // common validation error - TODO: Show body
-        ""
+        " body:" + response.body
       }
 
       case _ => {

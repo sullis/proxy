@@ -124,7 +124,7 @@ class GenericHandler @Inject() (
     response.map { response =>
       val duration = System.currentTimeMillis() - request.createdAtMillis
       metricActor ! toMetricMessage(server, request, response.status, token, duration)
-      log(request, server, "done", Some(s"status:${response.status} timeToFirstByteMs:$duration"))
+      logResponse(request, server, response, duration)
 
       /**
         * Returns the content type of the response, defaulting to the
@@ -259,6 +259,30 @@ class GenericHandler @Inject() (
     } else {
       allQueryParameters
     }
+  }
+
+  private[this] def logResponse(
+    request: ProxyRequest,
+    server: Server,
+    response: WSResponse,
+    duration: Long
+  ): Unit = {
+    val extra = response.status match {
+      case 415 => {
+        " request.headers:" + request.headers.headers.map { case (k, v) => s"$k=$v" }.sorted.mkString(", ")
+      }
+
+      case 422 => {
+        // common validation error - TODO: Show body
+        ""
+      }
+
+      case _ => {
+        ""
+      }
+    }
+
+    log(request, server, "done", Some(s"status:${response.status} timeToFirstByteMs:$duration$extra"))
   }
 
   private[this] def log(

@@ -163,7 +163,10 @@ case class ProxyRequest(
     * assume application / JSON if no content type header is
     * provided.
     */
-  val contentType: ContentType = headers.get("Content-Type").map(ContentType.apply).getOrElse(ContentType.ApplicationJson)
+  val contentType: ContentType = headers.get("Content-Type").map(ContentType.apply).getOrElse(ContentType.ApplicationJson) match {
+    case ContentType.Other(n) if n.toLowerCase == "none/none" => ContentType.ApplicationJson
+    case c => c
+  }
 
   /**
     * Assumes the body is a byte array, returning the string value as a UTF-8

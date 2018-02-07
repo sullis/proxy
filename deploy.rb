@@ -21,7 +21,28 @@ require 'net/http'
 
 PORT = 7000
 
-version = '0.3.56' # require this version until this bug fixed: https://docs.google.com/document/d/1Vs9xp9ARM3TN38ABMpiCoaHf76WnYmj-z5KQ9U1qDrA/edit
+version = ARGV.shift.to_s.strip
+if version.empty?
+  default = if system("which sem-info")
+              tag = `sem-info tag latest`.strip
+              tag.empty? ? nil : tag
+            else
+              nil
+            end
+
+  default_message = default ? " Default[#{default}]" : nil
+  
+  while version.empty?
+    print "Specify version to deploy#{default_message}: "
+    version = $stdin.gets.strip
+    if version.strip.empty?
+      version = default
+    end
+    if version.to_s.strip.empty?
+      puts "\nEnter a valid version\n"
+    end
+  end
+end
 
 nodes_file = ARGV.shift.to_s.strip
 if nodes_file.empty?

@@ -17,7 +17,7 @@ object ProxyRequest {
       requestMethod = request.method,
       requestPath = request.path,
       body = Some(
-          request.body.asBytes() match {
+        request.body.asBytes() match {
           case None => ProxyRequestBody.File(request.body.asFile)
           case Some(bytes) => ProxyRequestBody.Bytes(bytes)
         }
@@ -306,7 +306,7 @@ case class ProxyRequest(
     message: String,
     headers: Map[String,Seq[String]] = Map()
   ): Result = {
-    Logger.info(s"[proxy $toString] status:$status $message")
+    Logger.info(s"[proxy $toString] status:$status request.contentType:${contentType.toStringWithEncoding} $message")
 
     response(
       status = status,

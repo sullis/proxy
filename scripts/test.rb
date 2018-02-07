@@ -65,6 +65,11 @@ assert_status(201, response)
 assert_equals(response.json['id'], id)
 org = response.json
 
+# We convert application/octet-stream to application/json
+response = helpers.json_request("POST", "/sessions/organizations/demo", {}).with_content_type("application/octet-stream").execute()
+assert_status(201, response)
+assert_equals(response.json["organization"], "demo")
+
 # Test unknown path and response envelopes
 response = helpers.json_post("/foo").execute
 assert_generic_error(response, "HTTP path '/foo' is not defined")

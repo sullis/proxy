@@ -131,7 +131,10 @@ class GenericHandler @Inject() (
         * request Content-Type
         */
       val contentType: ContentType = response.header(Constants.Headers.ContentType).map(ContentType.apply).getOrElse(
-        request.contentType
+        response.status match {
+          case 301 | 302 | 303 | 307 => ContentType.TextHtml
+          case _ => request.contentType
+        }
       )
       val contentLength: Option[String] = response.header("Content-Length")
 

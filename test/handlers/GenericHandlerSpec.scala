@@ -120,8 +120,7 @@ class GenericHandlerSpec extends BasePlaySpec {
     sim.result.header.status must equal(303)
     sim.contentLength must equal(Some(0))
     sim.header("Location") must equal(Some("http://localhost/foo"))
-    // TODO: What do we want content type to be for redirects?
-    sim.contentType must equal(Some("application/json; charset=utf-8"))
+    sim.contentType must equal(Some("text/html; charset=utf-8"))
     sim.body must equal("")
   }
 

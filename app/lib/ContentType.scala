@@ -10,6 +10,7 @@ object ContentType {
 
   case object ApplicationJavascript extends ContentType { override def toString = "application/javascript" }
   case object ApplicationJson extends ContentType { override def toString = "application/json" }
+  case object TextHtml extends ContentType { override def toString = "text/html" }
   case object UrlFormEncoded extends ContentType { override def toString = "application/x-www-form-urlencoded" }
   case class Other(name: String) extends ContentType {
     override def toString: String = name

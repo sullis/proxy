@@ -3,7 +3,8 @@ package handlers
 import javax.inject.{Inject, Singleton}
 
 import io.apibuilder.validation.FormData
-import lib.{ProxyRequest, ResolvedToken, Route, Server}
+import lib._
+import play.api.libs.ws.WSClient
 import play.api.mvc.Result
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -18,6 +19,7 @@ class UrlFormEncodedHandler @Inject() (
 ) extends Handler {
 
   override def process(
+    wsClient: WSClient,
     server: Server,
     request: ProxyRequest,
     route: Route,
@@ -33,15 +35,51 @@ class UrlFormEncodedHandler @Inject() (
       )
 
       case Some(body) => {
-        applicationJsonHandler.processJson(
-          server,
-          request,
-          route,
-          token,
-          FormData.parseEncodedToJsObject(body)
-        )
+        processUrlFormEncoded(wsClient, server, request, route, token, Some(body))
       }
     }
   }
 
+  /**
+    * This method handles bodies that are both
+    * application/json and url form encoded
+    * transparently.
+    */
+  private[handlers] def processUrlFormEncoded(
+    wsClient: WSClient,
+    server: Server,
+    request: ProxyRequest,
+    route: Route,
+    token: ResolvedToken,
+    body: Option[String]
+  )(
+    implicit ec: ExecutionContext
+  ): Future[Result] = {
+    val map = body match {
+      case None => Map.empty[String, Seq[String]]
+      case Some(b) => FormData.parseEncoded(b)
+    }
+
+    if (isJson(map)) {
+      Future.successful(
+        request.responseUnprocessableEntity(
+          s"The content type you specified '${ContentType.UrlFormEncoded.toString}' does not match the body. " +
+          s"Please specify 'Content-type: ${ContentType.ApplicationJson.toString}' when providing a JSON Body."
+        )
+      )
+    } else {
+      applicationJsonHandler.processJson(
+        wsClient,
+        server,
+        request,
+        route,
+        token,
+        FormData.toJson(map)
+      )
+    }
+  }
+
+  private[this] def isJson(data: Map[String, Seq[String]]) = {
+    data.size == 1 && data.values.toSeq.flatMap(_.map(Option.apply)).flatten.isEmpty
+  }
 }

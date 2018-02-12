@@ -7,6 +7,7 @@ import actors.MetricActor
 import io.apibuilder.spec.v0.models.ParameterLocation
 import io.apibuilder.validation.MultiService
 import lib._
+import org.joda.time.DateTime
 import play.api.Logger
 import play.api.http.HttpEntity
 import play.api.libs.json.{JsObject, JsValue}
@@ -292,7 +293,7 @@ class GenericHandler @Inject() (
       case None => ""
       case Some(msg) => s" $msg"
     }
-    Logger.info(s"[proxy $request] $stage server:${server.name} ${request.method} ${server.host}${request.pathWithQuery} request.contentType:${request.contentType.toStringWithEncoding}$m")
+    Logger.info(s"[proxy ${org.joda.time.format.ISODateTimeFormat.dateTime.print(DateTime.now)} $request] $stage server:${server.name} ${request.method} ${server.host}${request.pathWithQuery} request.contentType:${request.contentType.toStringWithEncoding}$m")
   }
 
   private[this] def safeBody(

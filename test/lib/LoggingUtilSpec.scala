@@ -81,6 +81,8 @@ class LoggingUtilSpec extends BasePlaySpec {
     Seq(
       "password_change_form",
       "Password_CHANGE_forM",
+      ".password_change_form",
+      "foo.password_change_form",
       "io.flow.user.v0.models.password_change_form",
       "iO.flOw.User.V0.mOdels.PasSword_CHANGE_forM"
     ) foreach { typ =>

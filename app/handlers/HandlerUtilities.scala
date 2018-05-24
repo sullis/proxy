@@ -15,7 +15,7 @@ trait HandlerUtilities extends Errors {
 
   def log4xx(request: ProxyRequest, status: Int, body: String): Unit = {
     // GET too noisy due to bots
-    if (request.method != "GET" && status >= 400 && status < 500) {
+    if (request.method != Method.Get && status >= 400 && status < 500) {
       val finalBody = Try {
         Json.parse(body)
       } match {
@@ -44,7 +44,10 @@ trait HandlerUtilities extends Errors {
     if (config.isVerboseLogEnabled(request.path)) {
       js
     } else {
-      LoggingUtil.logger.safeJson(js, typ = None)
+      typ match {
+        case None => Json.obj("redacted" -> "object type not known. cannot log")
+        case Some(_) => LoggingUtil.logger.safeJson(js, typ = typ)
+      }
     }
   }
 

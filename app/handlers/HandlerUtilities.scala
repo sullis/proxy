@@ -3,7 +3,7 @@ package handlers
 import io.apibuilder.validation.MultiService
 import lib._
 import play.api.Logger
-import play.api.libs.json.{JsObject, JsValue, Json}
+import play.api.libs.json.{JsValue, Json}
 
 import scala.util.{Failure, Success, Try}
 

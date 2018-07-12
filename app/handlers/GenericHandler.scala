@@ -281,7 +281,7 @@ class GenericHandler @Inject() (
     body match {
       case j: JsObject if typ.isEmpty && j.value.isEmpty => "{}"
       case _: JsObject => toLogValue(request, body, typ).toString
-      case _ => "Body of type[${body.getClass.getName}] fully redacted"
+      case _ => s"Body of type[${body.getClass.getName}] fully redacted"
     }
   }
 }

@@ -131,12 +131,13 @@ assert_generic_error(response, "Error in envelope request body: Field 'method' i
 response = helpers.json_post("/organizations/0?envelope=request", { :method => 123, :body => "test" }).with_api_key.execute
 assert_generic_error(response, "Error in envelope request body: Field 'method' must be one of GET, POST, PUT, PATCH, DELETE, HEAD, CONNECT, OPTIONS, TRACE")
 
+response = helpers.json_post("/organizations/#{id}?envelope=request", { :method => "GET" }).with_api_key.execute
+assert_status(200, response)
+
 new_name = org['name'] + " 2"
 response = helpers.json_post("/organizations/#{id}?envelope=request", { :method => "PUT", :body => { :name => new_name } }).with_api_key.execute
-assert_unauthorized(response)
-
-response = helpers.json_post("/organizations/#{id}?envelope=request", { :method => "GET" }).with_api_key.execute
-assert_unauthorized(response)
+puts response.inspect
+assert_status(200, response)
 
 # Start session testing
 response = wait_for_status("Org to propagate to session", 201) { helpers.json_post("/sessions/organizations/#{id}").execute }

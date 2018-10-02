@@ -154,14 +154,6 @@ response = helpers.new_request("POST", "/#{id}/countries?envelope=request").
              ).execute
 assert_status(200, response)
 
-response = helpers.new_request("POST", "/#{id}/countries?envelope=request").
-             with_body(
-               ProxyGlobal.format_json(
-                 :method => "GET"
-               )
-             ).execute
-assert_unauthorized(response)
-
 puts "Tests Complete. Starting cleanup"
 
 cleanup(helpers)

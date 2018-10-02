@@ -134,11 +134,6 @@ assert_generic_error(response, "Error in envelope request body: Field 'method' m
 response = helpers.json_post("/organizations/#{id}?envelope=request", { :method => "GET" }).with_api_key.execute
 assert_status(200, response)
 
-new_name = org['name'] + " 2"
-response = helpers.json_post("/organizations/#{id}?envelope=request", { :method => "PUT", :body => { :name => new_name } }).with_api_key.execute
-puts response.inspect
-assert_status(200, response)
-
 # Start session testing
 response = wait_for_status("Org to propagate to session", 201) { helpers.json_post("/sessions/organizations/#{id}").execute }
 assert_status(201, response)

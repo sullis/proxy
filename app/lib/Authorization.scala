@@ -1,9 +1,10 @@
 package lib
 
-import javax.inject.{Inject, Singleton}
-
 import authentikat.jwt.{JsonWebToken, JwtClaimsSetJValue}
+import javax.inject.{Inject, Singleton}
 import org.apache.commons.codec.binary.{Base64, StringUtils}
+
+import scala.util.Try
 
 sealed trait Authorization
 
@@ -77,7 +78,7 @@ class AuthorizationParser @Inject() (
   /**
     * Parses the value fro the authorization header, handling case
     * where no authorization was present
-   */
+    */
   def parse(value: Option[String]): Authorization = {
     value match {
       case None => Authorization.NoCredentials
@@ -89,7 +90,7 @@ class AuthorizationParser @Inject() (
     * Parses the actual authorization header value. Acceptable types are:
     * - Basic - the API Token for the user
     * - Bearer - the JWT Token for the user with that contains an id field representing the user id in the database
-   */
+    */
   def parse(headerValue: String): Authorization = {
     headerValue.split(" ").toList match {
       case prefix :: value :: Nil => {
@@ -121,7 +122,10 @@ class AuthorizationParser @Inject() (
     }
   }
 
-  private[this] def jwtIsValid(token: String): Boolean = JsonWebToken.validate(token, config.jwtSalt)
+  private[this] def jwtIsValid(token: String): Boolean =
+    Try {
+      JsonWebToken.validate(token, config.jwtSalt)
+    }.getOrElse(false)
 
   private[this] def parseJwtToken(claimsSet: JwtClaimsSetJValue): Authorization = {
     claimsSet.asSimpleMap.toOption match {

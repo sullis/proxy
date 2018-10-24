@@ -52,18 +52,27 @@ sealed trait Route {
 
     } else if (hasOrganizationPrefix) {
       requestPath.split("/").toList match {
-        case _ :: org :: _ => Some(org)
+        case _ :: org :: _ => validateOrganization(org)
         case _ => sys.error(s"$method $requestPath: Could not extract organization from url")
       }
 
     } else if (hasOrganizationResourceId) {
       requestPath.split("/").toList match {
-        case _ :: _ :: org :: _ => Some(org)
+        case _ :: _ :: org :: _ => validateOrganization(org)
         case _ => sys.error(s"$method $requestPath: Could not extract organization from organization resource url")
       }
 
     } else {
       None
+    }
+  }
+
+  private[this] val OrganizationIdsToIgnore = Set("null", "robots.txt")
+  private[this] def validateOrganization(org: String): Option[String] = {
+    if (OrganizationIdsToIgnore.contains(org.toLowerCase())) {
+      None
+    } else {
+      Some(org)
     }
   }
 

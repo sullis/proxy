@@ -59,7 +59,7 @@ trait OrganizationAuth {
           withKeyValue("source", "proxy").
           organization(organization).
           withKeyValue("http_status_code", code).
-          warn("Unexpected HTTP Status Code during token authorization - request will NOT be authorized")
+          warn("Unexpected HTTP Status Code during organization token authorization - request will NOT be authorized")
         None
       }
 

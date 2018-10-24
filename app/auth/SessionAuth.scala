@@ -18,65 +18,78 @@ trait SessionAuth {
   def sessionClient: SessionClient
   def logger: RollbarLogger
 
+  private[this] val Undefined = "undefined"
+
   def resolveSession(
     requestId: String,
     sessionId: String
   ) (
     implicit ec: ExecutionContext
   ): Future[Option[ResolvedToken]] = {
-    sessionClient.sessionAuthorizations.post(
-      SessionAuthorizationForm(session = sessionId),
-      requestHeaders = FlowAuth.headersFromRequestId(requestId)
-    ).map {
-      case auth: OrganizationSessionAuthorization => {
-        Some(
-          ResolvedToken(
-            requestId = requestId,
-            userId = None,
-            environment = Some(auth.environment.toString),
-            organizationId = Some(auth.organization.id),
-            partnerId = None,
-            role = None,
-            sessionId = Some(sessionId)
+    if (sessionId == Undefined) {
+      // javascript sending in 'undefined' as session id
+      Future.successful(None)
+    } else {
+      sessionClient.sessionAuthorizations.post(
+        SessionAuthorizationForm(session = sessionId),
+        requestHeaders = FlowAuth.headersFromRequestId(requestId)
+      ).map {
+        case auth: OrganizationSessionAuthorization => {
+          Some(
+            ResolvedToken(
+              requestId = requestId,
+              userId = None,
+              environment = Some(auth.environment.toString),
+              organizationId = Some(auth.organization.id),
+              partnerId = None,
+              role = None,
+              sessionId = Some(sessionId)
+            )
           )
-        )
-      }
+        }
 
-      case SessionAuthorizationUndefinedType(other) => {
-        logger.
-          requestId(requestId).
-          withKeyValue("session_id", sessionId).
-          withKeyValue("type", other).
-          warn("SessionAuthorizationUndefinedType")
-        None
-      }
-    }.recover {
-      case io.flow.organization.v0.errors.UnitResponse(code) => {
-        logger.
-          requestId(requestId).
-          withKeyValue("http_status_code", code).
-          withKeyValue("session_id", sessionId).
-          warn("Unexpected HTTP Status Code - request will not be authorized")
-        None
-      }
+        case SessionAuthorizationUndefinedType(other) => {
+          logger.
+            requestId(requestId).
+            withKeyValue("session_id", sessionId).
+            withKeyValue("type", other).
+            warn("SessionAuthorizationUndefinedType")
+          None
+        }
+      }.recover {
+        case io.flow.organization.v0.errors.UnitResponse(code) => {
+          logger.
+            requestId(requestId).
+            withKeyValue("http_status_code", code).
+            withKeyValue("session_id", sessionId).
+            warn("Unexpected HTTP Status Code - request will not be authorized")
+          None
+        }
 
-      case e: io.flow.session.v0.errors.GenericErrorResponse => {
-        logger.
-          requestId(requestId).
-          withKeyValue("http_status_code", "422").
-          withKeyValue("session_id", sessionId).
-          withKeyValue("messages", e.genericError.messages.mkString(", ")).
-          warn("422 authorizing session")
-        None
-      }
+        case e: io.flow.session.v0.errors.GenericErrorResponse => {
+          e.genericError.messages.mkString(", ") match {
+            case "Session does not exist" => // expected - don't log
+            case msg => {
+              logger.
+                requestId(requestId).
+                withKeyValue("http_status_code", "422").
+                withKeyValue("session_id", sessionId).
+                withKeyValue("messages", msg).
+                warn("422 authorizing session")
+            }
+          }
 
-      case ex: Throwable => {
-        val msg = "Error communication with session service"
-        logger.
-          requestId(requestId).
-          withKeyValue("session_id", sessionId).
-          error(msg, ex)
-        throw new RuntimeException(msg, ex)
+          None
+        }
+
+        case ex: Throwable => {
+          val msg = "Error communication with session service"
+          logger.
+            requestId(requestId).
+            withKeyValue("session_id", sessionId).
+            error(msg, ex)
+          throw new RuntimeException(msg, ex)
+        }
       }
     }
   }

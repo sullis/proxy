@@ -53,6 +53,8 @@ trait OrganizationAuth {
         )
       )
     }.recover {
+      case io.flow.organization.v0.errors.UnitResponse(code) if code == 401 => None
+
       case io.flow.organization.v0.errors.UnitResponse(code) => {
         logger.
           requestId(token.requestId).

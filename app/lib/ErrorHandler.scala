@@ -22,6 +22,7 @@ class ErrorHandler @Inject() (
 
     logger.
       withKeyValue("error_id", errorId).
+      withKeyValue("request_ip", request.remoteAddress).
       withKeyValue("request_method", request.method.toString).
       withKeyValue("request_uri", request.uri).
       withKeyValue("http_status_code", statusCode).
@@ -42,6 +43,7 @@ class ErrorHandler @Inject() (
 
     logger.
       withKeyValue("error_id", errorId).
+      withKeyValue("request_ip", request.remoteAddress).
       withKeyValue("request_method", request.method.toString).
       withKeyValue("request_uri", request.uri).
       withKeyValue("route_path", operation.map(_.route.path)).

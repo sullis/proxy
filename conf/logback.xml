@@ -1,5 +1,5 @@
 <!--
-    Logging configuration for production, outputing JSON
+    Logging configuration for production, outputting JSON
     https://www.playframework.com/documentation/latest/SettingsLogger
 -->
 <configuration>

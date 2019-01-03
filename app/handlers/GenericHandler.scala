@@ -267,9 +267,17 @@ class GenericHandler @Inject() (
       l.withKeyValue(el._1, el._2)
     }.
       withKeyValue("server", server.name).
+      withKeyValue("canonical_url", canonicalUrl(request).getOrElse("-")).
       withKeyValue("request.contentLength" -> request.headers.get("Content-Length").getOrElse("-")).
       withKeyValue("request.contentType" -> request.contentType.toStringWithEncoding).
       info(s"[proxy ${org.joda.time.format.ISODateTimeFormat.dateTime.print(DateTime.now)} $request] $stage ${request.method} ${server.host}${request.pathWithQuery}")
+  }
+
+  private[this] def canonicalUrl(request: ProxyRequest): Option[String] = {
+    apiBuilderServicesFetcher.multiService.operation(
+      method = request.method.toString,
+      path = request.path
+    ).map(_.path)
   }
 
   private[this] def safeBody(

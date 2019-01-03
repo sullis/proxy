@@ -219,8 +219,7 @@ class GenericHandler @Inject() (
           allQueryParameters.filter { case (key, _) =>
             val isDefined = definedNames.contains(key)
             if (!isDefined) {
-              logger.
-                requestId(request.requestId).
+              request.log.
                 withKeyValue("parameter", key).
                 info("GenericHandler Filtering out query parameter as it is not defined as part of the spec")
             }
@@ -239,10 +238,6 @@ class GenericHandler @Inject() (
     response: WSResponse,
     duration: Long
   ): Unit = {
-    response.headers.foreach { case (k, values) =>
-        println(s" - $k: ${values}")
-    }
-
     val extra: Map[String, String] = response.status match {
       case UNSUPPORTED_MEDIA_TYPE => {
         Redact.auth(request.headers.headers.toMap)
@@ -268,7 +263,7 @@ class GenericHandler @Inject() (
     stage: String,
     attributes: Map[String, String]
   ): Unit = {
-    attributes.foldLeft(logger) { case (l, el) =>
+    attributes.foldLeft(request.log) { case (l, el) =>
       l.withKeyValue(el._1, el._2)
     }.
       withKeyValue("server", server.name).
@@ -293,9 +288,7 @@ class GenericHandler @Inject() (
     Try(response.body) match {
       case Success(b) => Some(b)
       case Failure(e) =>
-        logger.
-          requestId(request.requestId).
-          warn("Error while retrieving response body. Returning empty body.", e)
+        request.log.warn("Error while retrieving response body. Returning empty body.", e)
         None
     }
   }

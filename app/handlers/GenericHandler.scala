@@ -34,12 +34,12 @@ class GenericHandler @Inject() (
   )(
     implicit ec: ExecutionContext
   ): Future[Result] = {
-    val msg = request.body.map {
-      case ProxyRequestBody.Json(json) => s"body:${safeBody(request, json)}"
-      case ProxyRequestBody.Bytes(_) => "body:bytes"
-      case ProxyRequestBody.File(_) => "body:file"
+    val body = request.body.map {
+      case ProxyRequestBody.Json(json) => safeBody(request, json)
+      case ProxyRequestBody.Bytes(_) => "bytes"
+      case ProxyRequestBody.File(_) => "file"
     }
-    log(request, server, "start", msg)
+    log(request, server, "start", Map("body" -> body.getOrElse("-")))
 
     val wsRequest = buildRequest(wsClient, server, request, route, token)
 
@@ -239,41 +239,42 @@ class GenericHandler @Inject() (
     response: WSResponse,
     duration: Long
   ): Unit = {
-    val extra = response.status match {
+    response.headers.foreach { case (k, values) =>
+        println(s" - $k: ${values}")
+    }
+
+    val extra: Map[String, String] = response.status match {
       case UNSUPPORTED_MEDIA_TYPE => {
-        " request.headers:" + request.headers.headers.
-          map { case (k, v) =>
-            if (k.toLowerCase == "authorization") {
-              s"$k=redacted"
-            } else {
-              s"$k=$v"
-            }
-          }.sorted.mkString(", ")
+        Redact.auth(request.headers.headers.toMap)
       }
 
       case UNPROCESSABLE_ENTITY => {
-        " body:" + safeBody(request, response).getOrElse("")
+        Map("body" -> safeBody(request, response).getOrElse(""))
       }
 
-      case _ => {
-        ""
-      }
+      case _ => Map.empty
     }
 
-    log(request, server, "done", Some(s"status:${response.status} timeToFirstByteMs:$duration$extra"))
+    log(request, server, "done", extra ++ Map(
+      "status" -> response.status.toString,
+      "timeToFirstByteMs" -> duration.toString,
+      "response.contentLength" -> response.header("Content-Length").getOrElse("-")
+    ))
   }
 
   private[this] def log(
     request: ProxyRequest,
     server: Server,
     stage: String,
-    message: Option[String] = None
+    attributes: Map[String, String]
   ): Unit = {
-    val m = message match {
-      case None => ""
-      case Some(msg) => s" $msg"
-    }
-    logger.info(s"[proxy ${org.joda.time.format.ISODateTimeFormat.dateTime.print(DateTime.now)} $request] $stage server:${server.name} ${request.method} ${server.host}${request.pathWithQuery} request.contentType:${request.contentType.toStringWithEncoding}$m")
+    attributes.foldLeft(logger) { case (l, el) =>
+      l.withKeyValue(el._1, el._2)
+    }.
+      withKeyValue("server", server.name).
+      withKeyValue("request.contentLength" -> request.headers.get("Content-Length").getOrElse("-")).
+      withKeyValue("request.contentType" -> request.contentType.toStringWithEncoding).
+      info(s"[proxy ${org.joda.time.format.ISODateTimeFormat.dateTime.print(DateTime.now)} $request] $stage ${request.method} ${server.host}${request.pathWithQuery}")
   }
 
   private[this] def safeBody(

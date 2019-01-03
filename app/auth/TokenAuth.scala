@@ -1,6 +1,5 @@
 package auth
 
-import io.flow.log.RollbarLogger
 import io.flow.token.v0.interfaces.Client
 import io.flow.token.v0.models._
 import lib.{FlowAuth, ResolvedToken}
@@ -11,10 +10,9 @@ import scala.concurrent.{ExecutionContext, Future}
   * Queries token server to check if the specified token is a known
   * valid token.
   */
-trait TokenAuth {
+trait TokenAuth extends LoggingHelper {
 
   def tokenClient: Client
-  def logger: RollbarLogger
 
   def resolveToken(
     requestId: String,
@@ -35,9 +33,7 @@ trait TokenAuth {
 
       case ex: Throwable => {
         val msg = "Could not communicate with token server"
-        logger.
-          requestId(requestId).
-          error(msg, ex)
+        log(requestId).error(msg, ex)
         throw new RuntimeException(msg, ex)
       }
     }
@@ -49,7 +45,7 @@ trait TokenAuth {
         ResolvedToken(
           requestId = requestId,
           userId = Some(t.user.id),
-          environment = Some(t.environment.toString),
+          environment = Some(t.environment),
           organizationId = Some(t.organization.id)
         )
       )
@@ -58,17 +54,13 @@ trait TokenAuth {
         ResolvedToken(
           requestId = requestId,
           userId = Some(t.user.id),
-          environment = Some(t.environment.toString),
+          environment = Some(t.environment),
           partnerId = Some(t.partner.id)
         )
       )
 
       case TokenReferenceUndefinedType(other) => {
-        val msg = "Could not communicate with token server"
-        logger.
-          requestId(requestId).
-          withKeyValue("type", other).
-          warn("TokenReferenceUndefinedType")
+        log(requestId).withKeyValue("type", other).warn("TokenReferenceUndefinedType")
         None
       }
     }

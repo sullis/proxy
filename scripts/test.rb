@@ -71,6 +71,12 @@ assert_status(200, helpers.get("/demo/catalog/subcatalogs/#{subcatalog_id}/stati
 response = helpers.json_post("/demo/experiences/query/builders", { :discriminator => "query", :q => "test" }).with_api_key.execute
 assert_status(201, response)
 
+# tests that we validate that the URL is known before we attempt to validate the auth headers
+invalid_key_file = "/tmp/proxy-test-invalid-api-key.txt"
+File.open(invalid_key_file, "w") { |o| o << "invalid" }
+invalid_helpers = Helpers.new(uri, invalid_key_file)
+assert_status(422, invalid_helpers.get("/invalidurl").with_api_key.execute)
+
 # Create a org for remainder of tests
 id = "%s-%s" % [TEST_ORG_PREFIX, ProxyGlobal.random_string(8)]
 response = helpers.json_post("/organizations", { :environment => 'sandbox', :parent_id => 'flow', "id" => id }).with_api_key.execute

@@ -4,6 +4,14 @@ object Constants {
 
   val StopWords = Set("undefined", "null")
 
+  private[this] val DoNotLogSanitizedBodyURls = Set(
+    "/:organization/catalog/items/:number"
+  )
+
+  def logSanitizedBody(canonicalUrl: String): Boolean = {
+    !DoNotLogSanitizedBodyURls.contains(canonicalUrl)
+  }
+
   object Headers {
 
     val FlowAuth = "X-Flow-Auth"

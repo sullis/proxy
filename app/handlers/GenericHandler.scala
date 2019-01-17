@@ -263,11 +263,17 @@ class GenericHandler @Inject() (
     stage: String,
     attributes: Map[String, String]
   ): Unit = {
+    // if canonical URL is in list of things that are noisy, do not log bodies
+    val url = canonicalUrl(request).getOrElse("-")
+
     attributes.foldLeft(request.log) { case (l, el) =>
-      l.withKeyValue(el._1, el._2)
+      el._1 match {
+        case "body" if !Constants.logSanitizedBody(url) => l
+        case _ => l.withKeyValue(el._1, el._2)
+      }
     }.
       withKeyValue("server", server.name).
-      withKeyValue("canonical_url", canonicalUrl(request).getOrElse("-")).
+      withKeyValue("canonical_url", url).
       withKeyValue("request.contentLength" -> request.headers.get("Content-Length").getOrElse("-")).
       withKeyValue("request.contentType" -> request.contentType.toStringWithEncoding).
       info(s"[proxy ${org.joda.time.format.ISODateTimeFormat.dateTime.print(DateTime.now)} $request] $stage ${request.method} ${server.host}${request.pathWithQuery}")

@@ -46,4 +46,4 @@ lazy val commonSettings: Seq[Setting[_]] = Seq(
   resolvers += "Artifactory" at "https://flow.jfrog.io/flow/libs-release/"
 )
 
-version := "0.5.82"
+version := "0.5.83"

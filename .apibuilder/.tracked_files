@@ -17,9 +17,15 @@ flow:
   currency:
     play_2_x_json:
     - app/generated/FlowCurrencyV0Models.scala
+  customer:
+    play_2_6_client:
+    - app/generated/FlowCustomerV0Client.scala
   experience:
     play_2_x_json:
     - app/generated/FlowExperienceV0Models.scala
+  field-validation:
+    play_2_x_json:
+    - app/generated/FlowFieldValidationV0Models.scala
   fulfillment:
     play_2_x_json:
     - app/generated/FlowFulfillmentV0Models.scala

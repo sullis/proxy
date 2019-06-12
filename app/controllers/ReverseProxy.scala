@@ -11,7 +11,7 @@ import javax.inject.{Inject, Singleton}
 import lib._
 import play.api.mvc._
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class ReverseProxy @Inject () (
@@ -20,7 +20,6 @@ class ReverseProxy @Inject () (
   val flowAuth: FlowAuth,
   val logger: RollbarLogger,
   proxyConfigFetcher: ProxyConfigFetcher,
-  apiBuilderServicesFetcher: ApiBuilderServicesFetcher,
   serverProxyFactory: ServerProxy.Factory,
   val controllerComponents: ControllerComponents,
   ws: play.api.libs.ws.WSClient,
@@ -35,7 +34,7 @@ class ReverseProxy @Inject () (
 
   val index: Index = proxyConfigFetcher.current()
 
-  private[this] implicit val ec = system.dispatchers.lookup("reverse-proxy-context")
+  private[this] implicit val ec: ExecutionContext = system.dispatchers.lookup("reverse-proxy-context")
 
   override val organizationClient: OrganizationClient = {
     val server = mustFindServerByName("organization")
@@ -81,11 +80,14 @@ class ReverseProxy @Inject () (
   }
 
   def handle: Action[RawBuffer] = Action.async(parse.raw) { request =>
+    println("handle")
     ProxyRequest.validate(request)(logger) match {
       case Left(errors) => Future.successful {
+        println(s"handle - errors: $errors")
         UnprocessableEntity(genericErrors(errors))
       }
       case Right(pr) => {
+        println(s"handle - pr: $pr")
         if (pr.requestEnvelope) {
           pr.parseRequestEnvelope()  match {
             case Left(errors) => Future.successful {
@@ -103,27 +105,26 @@ class ReverseProxy @Inject () (
   }
 
   private[this] def internalHandle(request: ProxyRequest): Future[Result] = {
-    apiBuilderServicesFetcher.multiService.validate(request.method.toString, request.path) match {
-      case Left(errors) => {
-        logger.
-          requestId(request.requestId).
-          withKeyValue("validation_errors", errors.mkString(", ")).
-          info("apibuilder method and path are not defined - returning 422")
-
+    index.resolve(request.method, request.path) match {
+      case None => {
+        request.log.info("Route does not exist - returning 422")
         Future.successful(
-          request.responseUnprocessableEntity(errors.mkString(", "))
+          request.responseUnprocessableEntity("Route does not exist - returning 422")
         )
       }
-      case Right(_) => {
-        internalHandleValid(request)
+
+      case Some(route) => {
+        println(s"internalHandle operation: $route")
+        internalHandleValid(request, route)
       }
     }
   }
 
-  private[this] def internalHandleValid(request: ProxyRequest) = {
+  private[this] def internalHandleValid(request: ProxyRequest, route: Operation) = {
+    println(s"internalHandleValid")
     authorizationParser.parse(request.headers.get("Authorization")) match {
       case Authorization.NoCredentials => {
-        proxyPostAuth(request, token = ResolvedToken(requestId = request.requestId))
+        proxyPostAuth(request, route, token = ResolvedToken(requestId = request.requestId))
       }
 
       case Authorization.Unrecognized => Future.successful(
@@ -151,7 +152,7 @@ class ReverseProxy @Inject () (
             request.responseUnauthorized("API Token is not valid")
           )
           case Some(t) => {
-            proxyPostAuth(request, token = t)
+            proxyPostAuth(request, route, token = t)
           }
         }
       }
@@ -159,6 +160,7 @@ class ReverseProxy @Inject () (
       case Authorization.Session(sessionId) => {
         internalResolveSession(
           request = request,
+          route = route,
           sessionId = sessionId
         )
       }
@@ -166,6 +168,7 @@ class ReverseProxy @Inject () (
       case Authorization.User(userId) => {
         proxyPostAuth(
           request,
+          route,
           ResolvedToken(
             requestId = request.requestId,
             userId = Some(userId)
@@ -183,11 +186,12 @@ class ReverseProxy @Inject () (
           case None => {
             internalResolveSession(
               request = request,
+              route = route,
               sessionId = sessionId
             )
           }
           case Some(token) => {
-            proxyPostAuth(request, token)
+            proxyPostAuth(request, route, token)
           }
         }
       }
@@ -196,6 +200,7 @@ class ReverseProxy @Inject () (
 
   private[this] def internalResolveSession(
     request: ProxyRequest,
+    route: Operation,
     sessionId: String
   ): Future[Result] = {
     resolveSession(
@@ -206,16 +211,17 @@ class ReverseProxy @Inject () (
         request.responseUnauthorized("Session is not valid")
       )
       case Some(token) => {
-        proxyPostAuth(request, token)
+        proxyPostAuth(request, route, token)
       }
     }
   }
 
   private[this] def proxyPostAuth(
     request: ProxyRequest,
+    route: Operation,
     token: ResolvedToken
   ): Future[Result] = {
-    resolve(request, token).flatMap {
+    resolve(request, route, token).flatMap {
       case Left(result) => {
         Future.successful(result)
       }
@@ -359,6 +365,7 @@ class ReverseProxy @Inject () (
     */
   private[this] def resolve(
     request: ProxyRequest,
+    route: Operation,
     token: ResolvedToken
   ): Future[Either[Result, Operation]] = {
     val path = request.path
@@ -366,23 +373,7 @@ class ReverseProxy @Inject () (
     val hostOverride: Option[String] = request.headers.get(Constants.Headers.FlowHost)
 
     if (serverNameOverride.isEmpty && hostOverride.isEmpty) {
-      Future.successful(
-        index.resolve(request.method, path) match {
-          case None => {
-            logger.
-              requestId(request.requestId).
-              withKeyValue("method", request.method.toString).
-              withKeyValue("path", path).
-              warn("Unrecognized URL")  // by this point the url should have been able to be resolved
-
-            Left(NotFound)
-          }
-
-          case Some(operation) => {
-            Right(operation)
-          }
-        }
-      )
+      Future.successful(Right(route))
     } else {
       token.userId match {
         case None => Future.successful(

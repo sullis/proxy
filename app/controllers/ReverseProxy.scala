@@ -80,14 +80,11 @@ class ReverseProxy @Inject () (
   }
 
   def handle: Action[RawBuffer] = Action.async(parse.raw) { request =>
-    println("handle")
     ProxyRequest.validate(request)(logger) match {
       case Left(errors) => Future.successful {
-        println(s"handle - errors: $errors")
         UnprocessableEntity(genericErrors(errors))
       }
       case Right(pr) => {
-        println(s"handle - pr: $pr")
         if (pr.requestEnvelope) {
           pr.parseRequestEnvelope()  match {
             case Left(errors) => Future.successful {
@@ -116,14 +113,12 @@ class ReverseProxy @Inject () (
       }
 
       case Some(route) => {
-        println(s"internalHandle operation: $route")
         internalHandleValid(request, route)
       }
     }
   }
 
   private[this] def internalHandleValid(request: ProxyRequest, route: Operation) = {
-    println(s"internalHandleValid")
     authorizationParser.parse(request.headers.get("Authorization")) match {
       case Authorization.NoCredentials => {
         proxyPostAuth(request, route, token = ResolvedToken(requestId = request.requestId))

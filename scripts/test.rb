@@ -173,6 +173,21 @@ response = helpers.new_request("POST", "/#{id}/countries?envelope=request").
              ).execute
 assert_status(200, response)
 
+
+# tests that we upsert models defined in external api
+# Here we are specifically testing that quantity is turned
+# from a string to an integer
+response = helpers.json_post("/checkouts?country=CAN", {
+                               :organization => id,
+                               :order => {
+                                 :items => [{:number => "32353637185", :quantity => "1"}],
+                               }
+                             }
+                            ).with_header("Authorization", "session %s" % session_id).execute
+# TODO: the code should have returned an error as the item number doesn't exist. In future
+# we would expect a 422. Previously this endpoint returns a 500
+assert_status(201, response)
+
 puts "Tests Complete. Starting cleanup"
 
 cleanup(helpers)

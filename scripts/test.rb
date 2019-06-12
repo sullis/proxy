@@ -95,7 +95,7 @@ assert_equals(response.json["organization"], "demo")
 
 # Test unknown path and response envelopes
 response = helpers.json_post("/foo").execute
-assert_generic_error(response, "HTTP path '/foo' is not defined")
+assert_generic_error(response, "HTTP operation 'POST /foo' is not defined")
 
 response = helpers.json_post("/foo?envelope=res").execute
 assert_generic_error(response, "Invalid value 'res' for query parameter 'envelope' - must be one of request, response")

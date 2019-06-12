@@ -109,7 +109,9 @@ class ReverseProxy @Inject () (
       case None => {
         request.log.info("Route does not exist - returning 422")
         Future.successful(
-          request.responseUnprocessableEntity("Route does not exist - returning 422")
+          request.responseUnprocessableEntity(
+            s"HTTP operation '${request.method} /${request.path}' is not defined"
+          )
         )
       }
 

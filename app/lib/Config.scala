@@ -11,7 +11,7 @@ class Config @Inject() (
   private[this] object Names {
     val JwtSalt = "jwt.salt"
     val VerboseLogPrefixes = "integration.path.prefixes"
-    val Required = Seq(JwtSalt)
+    val Required: Seq[String] = Seq(JwtSalt)
   }
 
   lazy val jwtSalt: String = requiredString(Names.JwtSalt)
@@ -41,4 +41,21 @@ class Config @Inject() (
     }
   }
 
+  def requiredList(name: String): List[String] = {
+    val value = requiredString(name)
+    value.split(delim(value)).map(_.trim).toList
+  }
+
+  /**
+    * Migrating from comma to space as delimiter due to a bug
+    * in our dev tools
+    */
+  private[this] def delim(str: String): String = {
+    val i = str.indexOf(",")
+    if (i > 0) {
+      ","
+    } else {
+      " "
+    }
+  }
 }

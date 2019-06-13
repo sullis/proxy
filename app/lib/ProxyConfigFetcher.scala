@@ -195,7 +195,7 @@ class ProxyConfigFetcher @Inject() (
   logger: RollbarLogger
 ) {
 
-  private[this] lazy val Uris: Seq[String] = config.requiredString("proxy.config.uris").split(",").map(_.trim)
+  private[this] lazy val Uris: List[String] = config.requiredList("proxy.config.uris")
 
   /**
     * Loads proxy configuration from the specified URIs

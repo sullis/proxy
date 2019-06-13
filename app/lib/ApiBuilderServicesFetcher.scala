@@ -1,5 +1,7 @@
 package lib
 
+import java.util.concurrent.ConcurrentHashMap
+
 import io.apibuilder.validation.MultiService
 import io.flow.log.RollbarLogger
 import javax.inject.{Inject, Singleton}
@@ -15,30 +17,24 @@ class ApiBuilderServicesFetcher @Inject() (
   logger: RollbarLogger
 ) {
 
-  private[this] case object Lock
+  private[this] val Cache = new ConcurrentHashMap[Int, Either[Seq[String], MultiService]]()
+  private[this] val CacheKey: Int = 1
 
-  private[this] lazy val Uris: Seq[String] = config.requiredString("apibuilder.service.uris").split(",").map(_.trim)
-  private[this] var multiServiceCache: Option[Either[Seq[String], MultiService]] = None
+  private[this] lazy val Uris: List[String] = config.requiredList("apibuilder.service.uris")
 
-  def load(urls: Seq[String]): Either[Seq[String], MultiService] = {
-    Lock.synchronized {
-      multiServiceCache match {
-        case Some(ms) => ms
-        case None => {
-          multiServiceCache.getOrElse {
-            logger.
-              withKeyValues("uri", Uris).
-              info("ApiBuilderServicesFetcher: fetching configuration")
-            val ms = MultiService.fromUrls(urls)
-            multiServiceCache = Some(ms)
-            ms
-          }
-        }
+  private[this] def load(): Either[Seq[String], MultiService] = {
+    Cache.computeIfAbsent(
+      CacheKey,
+      _ => {
+        logger.
+          withKeyValues("uri", Uris).
+          info("ApiBuilderServicesFetcher: fetching configuration")
+        MultiService.fromUrls(Uris)
       }
-    }
+    )
   }
 
-  lazy val multiService: MultiService = load(Uris) match {
+  lazy val multiService: MultiService = load() match {
     case Left(errors) => sys.error(s"Error loading API Builder services from uris[$Uris]: ${errors.mkString(", ")}")
     case Right(multi) => multi
   }

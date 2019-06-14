@@ -31,10 +31,11 @@ class UrlFormEncodedHandlerSpec extends HandlerBasePlaySpec {
       "/users",
       body = Some("name=joe")
     )
-    response.status must equal(422)
+    println(response.body)
     (response.bodyAsJson \ "messages").as[Seq[String]] must equal(
       Seq("user_form.name must be an object and not a string")
     )
+    response.status must equal(422)
 
     simulate(urlFormEncodedHandler,
       Method.Post,

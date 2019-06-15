@@ -204,7 +204,7 @@ class GenericHandler @Inject() (
   ): Seq[(String, String)] = {
     val allQueryParameters = request.queryParametersAsSeq()
     if (request.requestEnvelope) {
-      multiService.operation(route.method.toString, route.path) match {
+      multiService.findOperation(route.method.toString, route.path) match {
         case None => {
           allQueryParameters
         }
@@ -287,7 +287,7 @@ class GenericHandler @Inject() (
   }
 
   private[this] def canonicalUrl(request: ProxyRequest): Option[String] = {
-    apiBuilderServicesFetcher.multiService.operation(
+    apiBuilderServicesFetcher.multiService.findOperation(
       method = request.method.toString,
       path = request.path
     ).map(_.operation.path)

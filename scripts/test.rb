@@ -123,8 +123,8 @@ assert_status(401, response)
 
 # Validate we cannot access another organization
 response = helpers.get("/organizations/remolacha").with_api_key.execute
-assert_status(422, response)
-assert_equals(response.json["messages"], ["Not authorized to access organization 'remolacha' or the organization does not exist"])
+assert_status(401, response)
+assert_equals(response.json["messages"], ["Token is not associated with the organization 'remolacha'"])
 
 # Validate can access own organization
 response = helpers.get("/organizations/#{id}").with_api_key.execute

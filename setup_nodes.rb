@@ -15,8 +15,11 @@ if ENV['DOCKER_USERNAME'].nil? || ENV['DOCKER_PASSWORD'].nil?
   raise "DOCKER_USERNAME and DOCKER_PASSWORD must be valid environment variables"
 end
 
-dir = File.dirname(__FILE__)
-nodes_file = File.join(dir, 'nodes')
+nodes_file = ARGV.shift.to_s.strip
+if nodes_file.empty?
+  dir = File.dirname(__FILE__)
+  nodes_file = File.join(dir, 'nodes')
+end
 
 if !File.exists?(nodes_file)
   puts "ERROR: Nodes configuration file[%s] not found" % nodes_file
@@ -24,17 +27,33 @@ if !File.exists?(nodes_file)
 end
 
 nodes = IO.readlines(nodes_file).map(&:strip).select { |l| !l.empty? }
+if nodes.empty?
+  puts "ERROR: Nodes configuration file[%s] is empty" % nodes_file
+  exit(1)
+end
 
-nodes.each do |ip|
+puts "Docker login:\n\n"
+nodes.each do |n|
   cmd = <<TXT
-scp deploy-proxy.sh #{ip}:~/.
-TXT
-  puts cmd
-  `#{cmd}`
-
-  cmd = <<TXT
-ssh #{ip} "docker login --username $DOCKER_USERNAME --password $DOCKER_PASSWORD"
+ssh #{n} "docker login --username $DOCKER_USERNAME --password $DOCKER_PASSWORD"
 TXT
   puts cmd
   `#{cmd}`
 end
+
+puts "Deploy Scripts to cluster:\n\n"
+nodes.each do |n|
+  cmd = "  scp deploy-proxy.sh #{n}:~/."
+  puts cmd
+  `#{cmd}`
+end
+
+puts "\n"
+puts "To setup your user permissions:\n\n"
+username = `whoami`.strip
+nodes.each do |n|
+  puts "  ssh #{n} sudo usermod -a -G docker #{username}"
+end
+
+puts ""
+puts "Once installed, run ./deploy.rb"

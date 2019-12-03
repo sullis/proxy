@@ -97,7 +97,8 @@ object RequestEnvelope {
     )
   }
 
+  private[this] val WhitelistHeaders = Constants.Headers.namesToWhitelist ++ Seq("Authorization")
   private[this] def safeHeaders(headers: Headers): Map[String, Seq[String]] = {
-    headers.toMap.filter { case (k, _) => Constants.Headers.namesToWhitelist.contains(k) }
+    headers.toMap.filter { case (k, _) => WhitelistHeaders.contains(k) }
   }
 }
